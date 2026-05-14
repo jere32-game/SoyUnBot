@@ -3,33 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Discord Bot Control Station V2</title>
+    <title>Discord Bot Control Station V3</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap');
+
         :root {
-            --bg-tertiary: #202225;
-            --bg-secondary: #2f3136;
-            --bg-primary: #36393f;
-            --text-normal: #dcddde;
-            --text-muted: #72767d;
+            /* Colores modernos de Discord */
+            --bg-tertiary: #1e1f22;
+            --bg-secondary: #2b2d31;
+            --bg-primary: #313338;
+            --bg-message-hover: #2e3035;
+            --text-normal: #dbdee1;
+            --text-muted: #949ba4;
+            --interactive-normal: #b5bac1;
+            --interactive-hover: #dbdee1;
+            --interactive-active: #ffffff;
             --brand: #5865F2;
             --brand-hover: #4752C4;
-            --success: #3ba55c;
-            --danger: #ed4245;
-            --warning: #faa61a;
+            --success: #23a559;
+            --danger: #da373c;
+            --warning: #f1c40f;
+            --divider: #3f4147;
         }
 
         body {
             margin: 0; padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
             background-color: var(--bg-primary);
             color: var(--text-normal);
             height: 100vh; display: flex; overflow: hidden;
         }
 
-        /* Utilidades y Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: var(--bg-tertiary); }
-        ::-webkit-scrollbar-thumb { background: #202225; border-radius: 4px; }
+        ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+        ::-webkit-scrollbar-thumb { background: #1a1b1e; border-radius: 4px; }
 
         /* Pantalla de Login */
         #login-screen {
@@ -38,182 +45,304 @@
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             z-index: 100;
         }
-        #login-screen input {
-            padding: 12px; width: 350px; border-radius: 5px; border: none;
-            background: var(--bg-tertiary); color: white; margin-bottom: 15px; font-size: 16px; outline: none;
+        .login-box {
+            background-color: var(--bg-secondary); padding: 32px; border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2); width: 400px; text-align: center;
         }
-        #login-screen button {
-            padding: 12px 25px; background-color: var(--brand); color: white;
-            border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 16px;
+        .login-box h2 { color: var(--interactive-active); margin-top: 0; }
+        .login-box input {
+            width: 100%; box-sizing: border-box; padding: 10px; margin: 15px 0;
+            background-color: var(--bg-tertiary); border: none; border-radius: 3px;
+            color: var(--text-normal); outline: none; font-size: 14px;
         }
-        #login-screen button:hover { background-color: var(--brand-hover); }
+        .login-box button {
+            width: 100%; padding: 10px; background-color: var(--brand); color: white;
+            border: none; border-radius: 3px; font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        .login-box button:hover { background-color: var(--brand-hover); }
 
-        /* Interfaz Principal */
         #app { display: none; width: 100%; height: 100%; }
 
         /* Sidebar de Servidores */
         #guilds {
-            width: 72px; background-color: var(--bg-tertiary);
-            display: flex; flex-direction: column; align-items: center; padding-top: 10px; overflow-y: auto;
+            width: 72px; min-width: 72px; background-color: var(--bg-tertiary);
+            display: flex; flex-direction: column; align-items: center; padding-top: 12px;
+            overflow-y: auto; gap: 8px;
         }
+        .guild-wrapper { position: relative; display: flex; justify-content: center; width: 100%; }
+        .guild-pill {
+            position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+            width: 4px; height: 0px; background-color: white; border-radius: 0 4px 4px 0;
+            transition: height 0.2s;
+        }
+        .guild-icon:hover ~ .guild-pill { height: 20px; }
+        .guild-wrapper.active .guild-pill { height: 40px; }
+        
         .guild-icon {
             width: 48px; height: 48px; background-color: var(--bg-primary);
-            border-radius: 50%; margin-bottom: 10px; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; overflow: hidden;
-            transition: border-radius 0.2s, background-color 0.2s;
+            border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            overflow: hidden; transition: 0.2s; position: relative; z-index: 2;
+            color: var(--interactive-normal);
         }
-        .guild-icon:hover, .guild-icon.active { border-radius: 15px; background-color: var(--brand); }
-        .guild-icon img { width: 100%; height: 100%; }
+        .guild-icon:hover, .guild-wrapper.active .guild-icon { 
+            border-radius: 16px; background-color: var(--brand); color: white; 
+        }
+        .guild-icon img { width: 100%; height: 100%; object-fit: cover; }
+        .guild-separator { width: 32px; height: 2px; background-color: var(--divider); border-radius: 1px; margin: 4px 0; }
 
-        /* Panel Izquierdo (Canales y Perfil) */
+        /* Panel Izquierdo */
         #sidebar-left {
-            width: 240px; background-color: var(--bg-secondary);
-            display: flex; flex-direction: column;
+            width: 240px; min-width: 240px; background-color: var(--bg-secondary);
+            display: flex; flex-direction: column; border-radius: 8px 0 0 0;
         }
-        #bot-profile {
-            padding: 15px; background-color: #292b2f; border-bottom: 1px solid var(--bg-tertiary);
-            display: flex; flex-direction: column; gap: 10px;
+        .sidebar-header-top {
+            height: 48px; min-height: 48px; padding: 0 16px; display: flex; align-items: center;
+            font-weight: 600; color: var(--interactive-active); box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+            border-bottom: 1px solid var(--bg-tertiary); cursor: pointer; transition: 0.2s;
         }
-        .bot-header { display: flex; align-items: center; gap: 10px; font-weight: bold; color: white;}
-        .bot-header img { width: 32px; height: 32px; border-radius: 50%; }
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-        .status-online { background-color: var(--success); }
-        .status-idle { background-color: var(--warning); }
-        .status-dnd { background-color: var(--danger); }
-        .status-invisible { background-color: var(--text-muted); }
+        .sidebar-header-top:hover { background-color: var(--bg-message-hover); }
 
-        /* Controles de Estado */
-        .controls select, .controls input {
-            width: 100%; padding: 5px; background: var(--bg-tertiary); color: white;
-            border: 1px solid #202225; border-radius: 3px; margin-bottom: 5px; font-size: 12px; outline: none;
-        }
-        .controls button {
-            width: 100%; padding: 5px; background: var(--bg-tertiary); color: white;
-            border: none; border-radius: 3px; cursor: pointer; font-size: 12px;
-        }
-        .controls button:hover { background: var(--text-muted); }
-
-        #channels { flex-grow: 1; padding: 10px; overflow-y: auto; }
+        #channels-list, #dms-list { flex-grow: 1; padding: 8px; overflow-y: auto; }
+        
         .channel-item {
-            padding: 6px 10px; margin-bottom: 2px; cursor: pointer;
-            border-radius: 5px; color: var(--text-muted); font-size: 15px; display: flex; align-items: center; gap: 5px;
+            padding: 6px 8px; margin-bottom: 2px; cursor: pointer; border-radius: 4px;
+            color: var(--interactive-normal); font-size: 14px; font-weight: 500;
+            display: flex; align-items: center; gap: 6px;
         }
-        .channel-item:hover, .channel-item.active { background-color: rgba(79, 84, 92, 0.32); color: white; }
+        .channel-item svg { width: 20px; height: 20px; fill: currentColor; opacity: 0.6; }
+        .channel-item:hover { background-color: var(--bg-message-hover); color: var(--interactive-hover); }
+        .channel-item.active { background-color: rgba(79, 84, 92, 0.32); color: var(--interactive-active); }
+        .channel-item.active svg { opacity: 1; }
+
+        .category-header {
+            font-size: 12px; font-weight: 600; color: var(--text-muted);
+            text-transform: uppercase; padding: 12px 8px 4px 8px; display: flex; justify-content: space-between;
+        }
+
+        /* Controles de DM */
+        .add-dm-btn {
+            background: none; border: none; color: var(--text-muted); cursor: pointer;
+            font-size: 16px; font-weight: bold; line-height: 12px; padding: 0;
+        }
+        .add-dm-btn:hover { color: var(--interactive-active); }
+
+        /* Perfil de Bot Inferior */
+        #bot-profile {
+            background-color: #232428; padding: 8px; display: flex; align-items: center;
+            gap: 8px; font-weight: 600; color: white;
+        }
+        .profile-info { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .profile-name { font-size: 14px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+        .profile-status { font-size: 12px; color: var(--text-muted); font-weight: 400; }
+        
+        .avatar-wrapper { position: relative; width: 32px; height: 32px; }
+        .avatar-wrapper img { width: 100%; height: 100%; border-radius: 50%; }
+        .status-dot {
+            position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px;
+            border-radius: 50%; border: 3px solid #232428;
+        }
+        .settings-btn {
+            background: transparent; border: none; color: var(--interactive-normal);
+            cursor: pointer; padding: 5px; border-radius: 4px; display: flex; align-items: center;
+        }
+        .settings-btn:hover { background-color: var(--bg-message-hover); color: var(--interactive-active); }
 
         /* Área de Chat */
         #chat-area { flex-grow: 1; display: flex; flex-direction: column; background-color: var(--bg-primary); }
         #chat-header {
-            height: 48px; border-bottom: 1px solid var(--bg-tertiary);
-            display: flex; align-items: center; padding: 0 20px; font-weight: bold; font-size: 16px;
+            height: 48px; min-height: 48px; border-bottom: 1px solid var(--bg-tertiary);
+            display: flex; align-items: center; padding: 0 16px; font-weight: 600; font-size: 16px; color: white; gap: 8px;
         }
-        #messages { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; }
+        #chat-header svg { width: 24px; height: 24px; fill: var(--text-muted); }
         
-        .message { margin-bottom: 15px; display: flex; }
-        .message img.avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 15px; background-color: var(--bg-tertiary); }
+        #messages { flex-grow: 1; padding: 16px 0; overflow-y: auto; display: flex; flex-direction: column; }
+        .message { padding: 8px 16px; display: flex; line-height: 1.375rem; transition: opacity 0.2s; }
+        .message:hover { background-color: var(--bg-message-hover); }
+        .message img.avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 16px; margin-top: 2px; }
         .message-content { flex-grow: 1; }
-        .message-author { font-weight: bold; margin-bottom: 4px; color: white; display: flex; align-items: center; gap: 8px;}
-        .message-date { font-size: 11px; color: var(--text-muted); font-weight: normal; }
-        .message-text { word-wrap: break-word; line-height: 1.4; }
-        
-        /* Embeds CSS simple */
-        .embed {
-            border-left: 4px solid #202225; background-color: var(--bg-secondary);
-            padding: 10px; margin-top: 5px; border-radius: 4px; max-width: 400px;
-        }
-        .embed-title { font-weight: bold; color: white; margin-bottom: 5px; }
-        .embed-desc { font-size: 14px; color: var(--text-normal); }
+        .message-author { font-weight: 500; color: white; display: flex; align-items: center; gap: 8px; font-size: 16px; }
+        .message-date { font-size: 12px; color: var(--text-muted); font-weight: 400; }
+        .message-text { color: var(--text-normal); word-wrap: break-word; }
 
-        /* Input de Chat */
-        #input-area { padding: 0 20px 20px 20px; background-color: var(--bg-primary); }
+        /* Input */
+        #input-area { padding: 0 16px 24px 16px; background-color: var(--bg-primary); }
         .input-wrapper {
-            display: flex; background-color: #40444b; border-radius: 8px; padding: 10px 15px; align-items: center; gap: 10px;
+            display: flex; background-color: #383a40; border-radius: 8px; padding: 0 16px; align-items: center; gap: 10px;
         }
+        .action-btn {
+            background: transparent; border: none; color: var(--interactive-normal);
+            cursor: pointer; padding: 10px 0; display: flex; align-items: center; justify-content: center;
+        }
+        .action-btn:hover { color: var(--interactive-hover); }
+        .action-btn.disabled { opacity: 0.5; cursor: not-allowed; }
         #chat-input {
-            flex-grow: 1; border: none; background: transparent; color: white;
-            font-size: 15px; outline: none;
+            flex-grow: 1; border: none; background: transparent; color: var(--text-normal);
+            font-size: 16px; outline: none; padding: 15px 0; font-family: inherit;
         }
-        #btn-embed {
-            background: var(--bg-tertiary); border: none; color: white; padding: 8px 12px;
-            border-radius: 5px; cursor: pointer; font-weight: bold;
-        }
-        #btn-embed:hover { background: var(--text-muted); }
 
-        /* Modal Embed */
-        #embed-modal {
-            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: var(--bg-secondary); padding: 20px; border-radius: 8px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5); z-index: 200; width: 300px;
+        /* Modales */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); z-index: 200; justify-content: center; align-items: center;
         }
-        #embed-modal input, #embed-modal textarea {
-            width: 100%; box-sizing: border-box; padding: 8px; margin-bottom: 10px;
-            background: var(--bg-tertiary); border: none; color: white; border-radius: 4px; outline: none;
+        .modal-content {
+            background: var(--bg-primary); width: 440px; border-radius: 8px;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.1), 0 2px 10px rgba(0,0,0,0.2); overflow: hidden;
         }
-        #embed-modal button { width: 100%; padding: 10px; background: var(--brand); color: white; border: none; border-radius: 4px; cursor: pointer;}
-        #embed-modal button:hover { background: var(--brand-hover); }
-        .close-modal { position: absolute; top: 10px; right: 10px; cursor: pointer; color: var(--text-muted); }
+        .modal-header { padding: 16px; background: var(--bg-primary); color: white; font-weight: 600; font-size: 20px; display: flex; justify-content: space-between;}
+        .modal-body { padding: 16px; background: var(--bg-secondary); }
+        .modal-footer { padding: 16px; background: var(--bg-secondary); display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--bg-tertiary);}
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; color: var(--interactive-normal); font-size: 12px; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; }
+        .form-group input, .form-group select, .form-group file {
+            width: 100%; box-sizing: border-box; padding: 10px; background: var(--bg-tertiary);
+            border: none; color: var(--text-normal); border-radius: 3px; outline: none; font-family: inherit;
+        }
+        .btn-primary { background: var(--brand); color: white; border: none; padding: 10px 16px; border-radius: 3px; font-weight: 600; cursor: pointer; transition: 0.2s;}
+        .btn-primary:hover { background: var(--brand-hover); }
+        .btn-secondary { background: transparent; color: white; border: none; padding: 10px 16px; border-radius: 3px; cursor: pointer;}
+        .btn-secondary:hover { text-decoration: underline; }
+
+        .embed {
+            border-left: 4px solid var(--brand); background-color: var(--bg-secondary);
+            padding: 12px; margin-top: 5px; border-radius: 4px; max-width: 432px;
+        }
+        .embed-title { font-weight: 600; color: white; margin-bottom: 8px; }
+        .embed-desc { font-size: 14px; color: var(--text-normal); }
     </style>
 </head>
 <body>
 
     <div id="login-screen">
-        <h2>Panel de Control EXPANDE</h2>
-        <input type="password" id="bot-token" placeholder="Pega el Token del Bot aquí...">
-        <button onclick="startClient()">Conectar Bot</button>
-        <p id="login-status" style="color: var(--danger); margin-top: 10px;"></p>
+        <div class="login-box">
+            <h2>Estación de Control V3</h2>
+            <p style="color: var(--text-muted); font-size: 14px; margin-top: 0;">Inicia sesión con tu Token de Bot</p>
+            <input type="password" id="bot-token" placeholder="Token del Bot...">
+            <button onclick="startClient()">Conectar Gateway</button>
+            <p id="login-status" style="color: var(--danger); margin-top: 15px; font-size: 13px;"></p>
+        </div>
     </div>
 
-    <div id="embed-modal">
-        <span class="close-modal" onclick="document.getElementById('embed-modal').style.display='none'">✕</span>
-        <h3 style="margin-top: 0;">Crear Embed</h3>
-        <input type="text" id="embed-title" placeholder="Título del Embed">
-        <textarea id="embed-desc" rows="4" placeholder="Descripción..."></textarea>
-        <input type="text" id="embed-color" placeholder="Color HEX (ej. FF0000)">
-        <button onclick="sendEmbedModal()">Enviar Embed</button>
+    <div id="settings-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>Personalizar Bot</div>
+                <div style="cursor:pointer; color:var(--text-muted)" onclick="closeModal('settings-modal')">✕</div>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nombre del Bot</label>
+                    <input type="text" id="edit-bot-name" placeholder="Nuevo nombre...">
+                </div>
+                <div class="form-group">
+                    <label>Avatar (Auto Data URL Converter)</label>
+                    <input type="file" id="edit-bot-avatar" accept="image/png, image/jpeg, image/gif">
+                </div>
+                <div class="form-group">
+                    <label>Estado de Conexión</label>
+                    <select id="status-select">
+                        <option value="online">Conectado (Verde)</option>
+                        <option value="idle">Ausente (Luna)</option>
+                        <option value="dnd">No Molestar (Rojo)</option>
+                        <option value="invisible">Invisible (Gris)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="display: flex; gap: 10px;">
+                    <select id="activity-type" style="width: 35%;">
+                        <option value="0">Jugando a</option>
+                        <option value="1">Transmitiendo</option>
+                        <option value="2">Escuchando</option>
+                        <option value="3">Viendo</option>
+                    </select>
+                    <input type="text" id="activity-name" placeholder="Actividad..." style="width: 65%;">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('settings-modal')">Cancelar</button>
+                <button class="btn-primary" onclick="saveSettings()">Guardar Cambios</button>
+            </div>
+        </div>
     </div>
 
     <div id="app">
-        <div id="guilds"></div>
-        
-        <div id="sidebar-left">
-            <div id="bot-profile">
-                <div class="bot-header">
-                    <img id="bot-avatar" src="https://cdn.discordapp.com/embed/avatars/0.png">
-                    <div>
-                        <div id="bot-name">Bot</div>
-                        <div style="font-size: 11px; font-weight: normal; color: var(--text-muted);">
-                            <span id="bot-status-dot" class="status-dot status-online"></span> <span id="bot-status-text">Conectado</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="controls">
-                    <select id="status-select" onchange="updatePresence()">
-                        <option value="online">Online</option>
-                        <option value="idle">Ausente</option>
-                        <option value="dnd">No Molestar</option>
-                        <option value="invisible">Invisible</option>
-                    </select>
-                    <div style="display: flex; gap: 5px;">
-                        <select id="activity-type" onchange="updatePresence()" style="width: 40%;">
-                            <option value="0">Jugando</option>
-                            <option value="1">Transmitiendo</option>
-                            <option value="2">Escuchando</option>
-                            <option value="3">Viendo</option>
-                        </select>
-                        <input type="text" id="activity-name" placeholder="Actividad..." style="width: 60%;" onchange="updatePresence()">
-                    </div>
+        <div id="guilds">
+            <div class="guild-wrapper active" id="wrapper-home" onclick="loadHome()">
+                <div class="guild-pill"></div>
+                <div class="guild-icon" style="background-color: var(--brand); color: white;">
+                    <svg width="28" height="20" viewBox="0 0 28 20" fill="currentColor">
+                        <path d="M23.0212 1.67671C21.3107 0.879656 19.5079 0.318797 17.6584 0C17.4062 0.461742 17.1749 0.934541 16.9708 1.4184C15.003 1.12145 12.9974 1.12145 11.0283 1.4184C10.819 0.934541 10.589 0.461742 10.3368 0C8.48597 0.318797 6.68316 0.879656 4.97272 1.67671C1.56727 6.77853 0.649666 11.7538 1.11108 16.652C3.10102 18.1418 5.3262 19.2743 7.69177 20C8.22338 19.2743 8.69519 18.4993 9.09812 17.691C8.32996 17.3997 7.58522 17.0424 6.87684 16.6135C7.06531 16.4762 7.24726 16.3387 7.42442 16.1847C11.5911 18.1749 16.408 18.1749 20.5763 16.1847C20.7535 16.3387 20.9363 16.4762 21.1239 16.6135C20.4155 17.0424 19.6708 17.3997 18.9026 17.691C19.3056 18.4993 19.7774 19.2743 20.309 20C22.6746 19.2743 24.9007 18.1418 26.8897 16.652C27.4302 10.9731 25.9665 6.04728 23.0212 1.67671ZM9.68041 13.6383C8.39754 13.6383 7.34085 12.4453 7.34085 10.994C7.34085 9.54272 8.37155 8.34973 9.68041 8.34973C10.9893 8.34973 12.0363 9.54272 12.0103 10.994C12.0103 12.4453 10.9893 13.6383 9.68041 13.6383ZM18.3161 13.6383C17.0332 13.6383 15.9765 12.4453 15.9765 10.994C15.9765 9.54272 17.0072 8.34973 18.3161 8.34973C19.625 8.34973 20.6719 9.54272 20.646 10.994C20.646 12.4453 19.625 13.6383 18.3161 13.6383Z"/>
+                    </svg>
                 </div>
             </div>
-            <div id="channels"></div>
+            <div class="guild-separator"></div>
+            <div id="server-list" style="display:flex; flex-direction:column; gap:8px; width:100%;"></div>
+        </div>
+        
+        <div id="sidebar-left">
+            <div class="sidebar-header-top" id="sidebar-header-text">Mensajes Directos</div>
+            
+            <div id="channels-list" style="display:none;"></div>
+            
+            <div id="dms-list">
+                <div class="category-header">
+                    <span>Contactos DM</span>
+                    <button class="add-dm-btn" onclick="promptAddDM()" title="Agregar por ID de Usuario">+</button>
+                </div>
+                <div id="dm-items"></div>
+            </div>
+
+            <div id="bot-profile">
+                <div class="avatar-wrapper">
+                    <img id="bot-avatar" src="https://cdn.discordapp.com/embed/avatars/0.png">
+                    <div id="bot-status-dot" class="status-dot" style="background-color: var(--success);"></div>
+                </div>
+                <div class="profile-info">
+                    <div class="profile-name" id="bot-name">Cargando...</div>
+                    <div class="profile-status" id="bot-status-text">En línea</div>
+                </div>
+                <button class="settings-btn" onclick="openSettings()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M19.738 10H22V14H19.739C19.498 14.931 19.1 15.798 18.565 16.564L20.166 18.166L17.338 20.995L15.736 19.393C14.97 19.928 14.103 20.326 13.171 20.567V23H9.171V20.566C8.24 20.326 7.373 19.928 6.607 19.392L5.005 20.994L2.177 18.165L3.779 16.563C3.244 15.797 2.846 14.93 2.605 13.999H0.333V9.999H2.604C2.845 9.068 3.243 8.201 3.778 7.435L2.176 5.833L5.004 3.004L6.606 4.606C7.372 4.071 8.239 3.673 9.17 3.432V1H13.17V3.432C14.101 3.673 14.968 4.071 15.734 4.606L17.336 3.004L20.164 5.833L18.562 7.435C19.097 8.201 19.495 9.068 19.736 9.999H19.738ZM11.671 15.5C13.604 15.5 15.171 13.933 15.171 12C15.171 10.067 13.604 8.5 11.671 8.5C9.738 8.5 8.171 10.067 8.171 12C8.171 13.933 9.738 15.5 11.671 15.5Z"/></svg>
+                </button>
+            </div>
         </div>
 
         <div id="chat-area">
-            <div id="chat-header">Selecciona un canal...</div>
+            <div id="chat-header">
+                <svg viewBox="0 0 24 24"><path d="M5.88657 21C5.57547 21 5.3399 20.7189 5.39427 20.4126L6.00001 17H2.59511C2.28449 17 2.04905 16.7198 2.10259 16.4138L2.27759 15.4138C2.31946 15.1746 2.52722 15 2.77011 15H6.35001L7.41001 9H4.00511C3.69449 9 3.45905 8.71977 3.51259 8.41381L3.68759 7.41381C3.72946 7.17456 3.93722 7 4.18011 7H7.76001L8.39677 3.41262C8.43914 3.17391 8.64664 3 8.88907 3H9.87344C10.1845 3 10.4201 3.28107 10.3657 3.58738L9.76001 7H15.76L16.3968 3.41262C16.4391 3.17391 16.6466 3 16.8891 3H17.8734C18.1845 3 18.4201 3.28107 18.3657 3.58738L17.76 7H21.1649C21.4755 7 21.711 7.28023 21.6574 7.58619L21.4824 8.58619C21.4406 8.82544 21.2328 9 20.9899 9H17.41L16.35 15H19.7549C20.0655 15 20.301 15.2802 20.2474 15.5862L20.0724 16.5862C20.0306 16.8254 19.8228 17 19.5799 17H16L15.3632 20.5874C15.3209 20.8261 15.1134 21 14.8709 21H13.8866C13.5755 21 13.3399 20.7189 13.3943 20.4126L14 17H8.00001L7.36323 20.5874C7.32086 20.8261 7.11336 21 6.87093 21H5.88657ZM9.41045 9L8.35045 15H14.3504L15.4104 9H9.41045Z"/></svg>
+                <span id="chat-title">Selecciona un canal...</span>
+            </div>
             <div id="messages"></div>
             <div id="input-area">
                 <div class="input-wrapper">
-                    <button id="btn-embed" onclick="document.getElementById('embed-modal').style.display='block'" disabled>Embed</button>
+                    <button class="action-btn disabled" id="btn-embed" onclick="document.getElementById('embed-modal').style.display='flex'">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+                    </button>
                     <input type="text" id="chat-input" placeholder="Escribe un mensaje..." disabled>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="embed-modal" class="modal-overlay">
+        <div class="modal-content" style="width: 320px;">
+            <div class="modal-header">
+                <div style="font-size: 16px;">Crear Embed</div>
+                <div style="cursor:pointer; color:var(--text-muted)" onclick="closeModal('embed-modal')">✕</div>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <input type="text" id="embed-title" placeholder="Título">
+                </div>
+                <div class="form-group">
+                    <textarea id="embed-desc" rows="4" placeholder="Descripción..." style="width:100%; padding:10px; background:var(--bg-tertiary); border:none; color:white; border-radius:3px; outline:none; resize:vertical; font-family:inherit;"></textarea>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="embed-color" placeholder="Color HEX (ej. 5865F2)">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" style="width:100%;" onclick="sendEmbedModal()">Enviar Embed</button>
             </div>
         </div>
     </div>
@@ -228,12 +357,14 @@
         let heartbeatInterval = null;
         let seq = null;
         
-        // Manejo estricto por IDs
         let activeGuildId = null;
         let activeChannelId = null;
+        let isDMView = true;
 
-        // Timer para el "Escribiendo..."
-        let typingTimeout = null;
+        // Sonido oficial de notificación
+        const pingSound = new Audio('https://www.myinstants.com/media/sounds/discord-notification.mp3');
+
+        const HASHTAG_SVG = `<svg viewBox="0 0 24 24"><path d="M5.88657 21C5.57547 21 5.3399 20.7189 5.39427 20.4126L6.00001 17H2.59511C2.28449 17 2.04905 16.7198 2.10259 16.4138L2.27759 15.4138C2.31946 15.1746 2.52722 15 2.77011 15H6.35001L7.41001 9H4.00511C3.69449 9 3.45905 8.71977 3.51259 8.41381L3.68759 7.41381C3.72946 7.17456 3.93722 7 4.18011 7H7.76001L8.39677 3.41262C8.43914 3.17391 8.64664 3 8.88907 3H9.87344C10.1845 3 10.4201 3.28107 10.3657 3.58738L9.76001 7H15.76L16.3968 3.41262C16.4391 3.17391 16.6466 3 16.8891 3H17.8734C18.1845 3 18.4201 3.28107 18.3657 3.58738L17.76 7H21.1649C21.4755 7 21.711 7.28023 21.6574 7.58619L21.4824 8.58619C21.4406 8.82544 21.2328 9 20.9899 9H17.41L16.35 15H19.7549C20.0655 15 20.301 15.2802 20.2474 15.5862L20.0724 16.5862C20.0306 16.8254 19.8228 17 19.5799 17H16L15.3632 20.5874C15.3209 20.8261 15.1134 21 14.8709 21H13.8866C13.5755 21 13.3399 20.7189 13.3943 20.4126L14 17H8.00001L7.36323 20.5874C7.32086 20.8261 7.11336 21 6.87093 21H5.88657ZM9.41045 9L8.35045 15H14.3504L15.4104 9H9.41045Z"/></svg>`;
 
         async function apiRequest(endpoint, options = {}) {
             const fetchOpts = {
@@ -246,27 +377,24 @@
             if (options.body) fetchOpts.body = JSON.stringify(options.body);
             
             const response = await fetch(`${API}${endpoint}`, fetchOpts);
-            if (!response.ok) throw new Error(`API Error: ${response.status}`);
+            if (!response.ok) {
+                const errData = await response.text();
+                throw new Error(`API Error: ${response.status} - ${errData}`);
+            }
             return response.status === 204 ? null : await response.json();
         }
 
         function startClient() {
-            const tokenInput = document.getElementById('bot-token').value.trim();
-            if (!tokenInput) return;
+            botToken = document.getElementById('bot-token').value.trim();
+            if (!botToken) return;
             
-            botToken = tokenInput;
-            document.getElementById('login-status').innerText = "Conectando al Gateway...";
-            
+            document.getElementById('login-status').innerText = "Conectando...";
             ws = new WebSocket(WS_URL);
             
             ws.onopen = () => {
                 ws.send(JSON.stringify({
                     op: 2,
-                    d: {
-                        token: botToken,
-                        intents: 33280, // Guilds + Guild Messages + Message Content
-                        properties: { $os: "windows", $browser: "chrome", $device: "pc" }
-                    }
+                    d: { token: botToken, intents: 33280, properties: { $os: "windows", $browser: "chrome", $device: "pc" } }
                 }));
             };
 
@@ -276,20 +404,15 @@
 
                 switch (data.op) {
                     case 10: 
-                        heartbeatInterval = setInterval(() => {
-                            ws.send(JSON.stringify({ op: 1, d: seq }));
-                        }, data.d.heartbeat_interval);
+                        heartbeatInterval = setInterval(() => { ws.send(JSON.stringify({ op: 1, d: seq })); }, data.d.heartbeat_interval);
                         break;
-                    case 0: 
-                        handleEvent(data.t, data.d);
-                        break;
+                    case 0: handleEvent(data.t, data.d); break;
                 }
             };
 
             ws.onclose = () => {
                 clearInterval(heartbeatInterval);
-                alert("Conexión perdida con Discord.");
-                location.reload();
+                document.getElementById('login-status').innerText = "Conexión perdida. Recarga la página.";
             };
         }
 
@@ -298,16 +421,17 @@
                 botData = data.user;
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('app').style.display = 'flex';
-                
-                // Actualizar UI del perfil del bot
-                document.getElementById('bot-name').innerText = botData.username;
-                if(botData.avatar) {
-                    document.getElementById('bot-avatar').src = `https://cdn.discordapp.com/avatars/${botData.id}/${botData.avatar}.png`;
-                }
-                
+                updateProfileUI();
                 loadGuilds();
+                loadHome(); 
             }
             if (type === 'MESSAGE_CREATE') {
+                // BUG FIX: Reproducir sonido solo si el autor NO es nuestro bot
+                if (data.author.id !== botData.id) {
+                    pingSound.currentTime = 0;
+                    pingSound.play().catch(()=>{});
+                }
+
                 if (data.channel_id === activeChannelId) {
                     renderMessage(data);
                     scrollToBottom();
@@ -315,175 +439,225 @@
             }
         }
 
+        function updateProfileUI() {
+            document.getElementById('bot-name').innerText = botData.username;
+            document.getElementById('edit-bot-name').value = botData.username;
+            if(botData.avatar) {
+                document.getElementById('bot-avatar').src = `https://cdn.discordapp.com/avatars/${botData.id}/${botData.avatar}.png`;
+            }
+        }
+
         // ==========================================
-        //  FUNCIONES DE PERSONALIZACIÓN (EXPANDE)
+        //  MODALES Y PERSONALIZACIÓN (DATA URL)
         // ==========================================
-        
-        function updatePresence() {
-            if (!ws || ws.readyState !== WebSocket.OPEN) return;
-            
+        function openSettings() { document.getElementById('settings-modal').style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        async function saveSettings() {
+            const btn = document.querySelector('#settings-modal .btn-primary');
+            btn.innerText = "Guardando...";
+            btn.disabled = true;
+
             const status = document.getElementById('status-select').value;
             const actType = parseInt(document.getElementById('activity-type').value);
             const actName = document.getElementById('activity-name').value;
             
-            // Actualizar UI visual
             const dot = document.getElementById('bot-status-dot');
-            dot.className = `status-dot status-${status}`;
-            document.getElementById('bot-status-text').innerText = status.toUpperCase();
+            dot.style.backgroundColor = status === 'online' ? 'var(--success)' : status === 'idle' ? 'var(--warning)' : status === 'dnd' ? 'var(--danger)' : 'var(--text-muted)';
+            document.getElementById('bot-status-text').innerText = status.charAt(0).toUpperCase() + status.slice(1);
 
-            const activities = actName ? [{ name: actName, type: actType }] : [];
-
-            // Opcode 3: Update Presence (Igual a tu bloque setActivity/setStatus)
             ws.send(JSON.stringify({
                 op: 3,
-                d: {
-                    since: null,
-                    activities: activities,
-                    status: status,
-                    afk: false
-                }
+                d: { since: null, activities: actName ? [{ name: actName, type: actType }] : [], status: status, afk: false }
             }));
-        }
 
-        async function triggerTyping() {
-            if (!activeChannelId) return;
-            try {
-                await apiRequest(`/channels/${activeChannelId}/typing`, { method: 'POST' });
-            } catch (err) { console.error("Error triggerTyping", err); }
-        }
-
-        // Detectar cuando se escribe para enviar "Escribiendo..."
-        document.getElementById('chat-input').addEventListener('input', () => {
-            if (!typingTimeout) {
-                triggerTyping();
-                typingTimeout = setTimeout(() => { typingTimeout = null; }, 9000); // Discord cancela el typing cada 10s
-            }
-        });
-
-        async function sendEmbedModal() {
-            const title = document.getElementById('embed-title').value;
-            const desc = document.getElementById('embed-desc').value;
-            const colorHex = document.getElementById('embed-color').value.replace('#', '');
+            const newName = document.getElementById('edit-bot-name').value.trim();
+            const fileInput = document.getElementById('edit-bot-avatar').files[0];
             
-            if (!activeChannelId || (!title && !desc)) return;
-
-            const decColor = parseInt(colorHex, 16) || 0;
+            let patchData = {};
+            if (newName && newName !== botData.username) patchData.username = newName;
 
             try {
-                await apiRequest(`/channels/${activeChannelId}/messages`, {
-                    method: 'POST',
-                    body: { 
-                        embeds: [{ 
-                            title: title, 
-                            description: desc, 
-                            color: decColor 
-                        }] 
-                    }
-                });
-                document.getElementById('embed-modal').style.display = 'none';
-                // Limpiar inputs
-                document.getElementById('embed-title').value = '';
-                document.getElementById('embed-desc').value = '';
-            } catch (err) {
-                alert("Error enviando Embed");
+                if (fileInput) {
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        patchData.avatar = e.target.result;
+                        await updateBotProfileAPI(patchData);
+                        finalizeSettingsSave(btn);
+                    };
+                    reader.readAsDataURL(fileInput);
+                } else if (Object.keys(patchData).length > 0) {
+                    await updateBotProfileAPI(patchData);
+                    finalizeSettingsSave(btn);
+                } else {
+                    finalizeSettingsSave(btn);
+                }
+            } catch (error) {
+                alert("Error al actualizar: " + error.message);
+                finalizeSettingsSave(btn, true);
             }
         }
 
-        // ==========================================
-        //  CARGA DE SERVIDORES Y CANALES
-        // ==========================================
+        async function updateBotProfileAPI(payload) {
+            const updatedUser = await apiRequest('/users/@me', { method: 'PATCH', body: payload });
+            botData = updatedUser;
+            updateProfileUI();
+        }
 
+        function finalizeSettingsSave(btn, error = false) {
+            btn.innerText = "Guardar Cambios";
+            btn.disabled = false;
+            if(!error) closeModal('settings-modal');
+        }
+
+        // ==========================================
+        //  NAVEGACIÓN Y CARGA
+        // ==========================================
         async function loadGuilds() {
             try {
                 const guilds = await apiRequest('/users/@me/guilds');
-                const guildsContainer = document.getElementById('guilds');
-                guildsContainer.innerHTML = '';
-
+                const slist = document.getElementById('server-list');
+                slist.innerHTML = '';
                 guilds.forEach(guild => {
-                    const iconUrl = guild.icon 
-                        ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png` 
-                        : 'https://cdn.discordapp.com/embed/avatars/0.png';
-                    
+                    const iconUrl = guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png';
                     const div = document.createElement('div');
-                    div.className = 'guild-icon';
-                    div.title = guild.name;
-                    div.id = `guild-${guild.id}`;
-                    div.innerHTML = `<img src="${iconUrl}" alt="${guild.name}">`;
-                    div.onclick = () => selectGuild(guild.id);
-                    guildsContainer.appendChild(div);
+                    div.className = 'guild-wrapper';
+                    div.id = `wrapper-guild-${guild.id}`;
+                    
+                    // BUG FIX: Creando elementos directo en el DOM para que no se rompa si el nombre del server tiene comillas o emojis raros
+                    div.innerHTML = `<div class="guild-pill"></div>`;
+                    
+                    const iconDiv = document.createElement('div');
+                    iconDiv.className = 'guild-icon';
+                    iconDiv.innerHTML = `<img src="${iconUrl}" alt="${escapeHTML(guild.name)}">`;
+                    iconDiv.onclick = () => selectGuild(guild.id, guild.name);
+                    
+                    div.appendChild(iconDiv);
+                    slist.appendChild(div);
                 });
             } catch (err) { console.error(err); }
         }
 
-        async function selectGuild(guildId) {
-            activeGuildId = guildId;
+        function loadHome() {
+            isDMView = true;
+            document.querySelectorAll('.guild-wrapper').forEach(el => el.classList.remove('active'));
+            document.getElementById('wrapper-home').classList.add('active');
             
-            document.querySelectorAll('.guild-icon').forEach(el => el.classList.remove('active'));
-            document.getElementById(`guild-${guildId}`).classList.add('active');
-            document.getElementById('chat-header').innerText = "Selecciona un canal...";
-            document.getElementById('messages').innerHTML = '';
-            document.getElementById('chat-input').disabled = true;
-            document.getElementById('btn-embed').disabled = true;
-            activeChannelId = null;
+            document.getElementById('sidebar-header-text').innerText = "Direct Messages";
+            document.getElementById('channels-list').style.display = 'none';
+            document.getElementById('dms-list').style.display = 'block';
+            
+            resetChatArea();
+        }
+
+        async function selectGuild(guildId, guildName) {
+            isDMView = false;
+            document.querySelectorAll('.guild-wrapper').forEach(el => el.classList.remove('active'));
+            document.getElementById(`wrapper-guild-${guildId}`).classList.add('active');
+            
+            document.getElementById('sidebar-header-text').innerText = guildName;
+            document.getElementById('channels-list').style.display = 'block';
+            document.getElementById('dms-list').style.display = 'none';
+            
+            resetChatArea();
 
             try {
                 const channels = await apiRequest(`/guilds/${guildId}/channels`);
-                const channelsContainer = document.getElementById('channels');
-                channelsContainer.innerHTML = '';
-
-                // Filtrar texto (0) y foros/anuncios
-                const textChannels = channels.filter(c => c.type === 0 || c.type === 5);
-                
-                textChannels.forEach(channel => {
+                const cList = document.getElementById('channels-list');
+                cList.innerHTML = '';
+                channels.filter(c => c.type === 0 || c.type === 5).forEach(channel => {
                     const div = document.createElement('div');
                     div.className = 'channel-item';
                     div.id = `channel-${channel.id}`;
-                    div.innerHTML = `<span>#</span> ${channel.name}`;
-                    div.onclick = () => selectChannel(channel.id, channel.name);
-                    channelsContainer.appendChild(div);
+                    div.innerHTML = `${HASHTAG_SVG} ${channel.name}`;
+                    div.onclick = () => openChannel(channel.id, channel.name, false);
+                    cList.appendChild(div);
                 });
             } catch (err) { console.error(err); }
         }
 
-        async function selectChannel(channelId, channelName) {
-            activeChannelId = channelId;
+        function resetChatArea() {
+            activeChannelId = null;
+            document.getElementById('chat-title').innerText = "Selecciona un canal...";
+            document.getElementById('messages').innerHTML = '';
+            document.getElementById('chat-input').disabled = true;
+            document.getElementById('chat-input').placeholder = "Selecciona un canal para escribir";
+            document.getElementById('btn-embed').classList.add('disabled');
+        }
+
+        // ==========================================
+        //  SISTEMA DE DM POR ID
+        // ==========================================
+        async function promptAddDM() {
+            const userId = prompt("Introduce la ID de Discord del Usuario:");
+            if (!userId) return;
             
+            try {
+                const channel = await apiRequest('/users/@me/channels', {
+                    method: 'POST',
+                    body: { recipient_id: userId.trim() }
+                });
+                
+                const dmContainer = document.getElementById('dm-items');
+                
+                if(!document.getElementById(`channel-${channel.id}`)) {
+                    const recipient = channel.recipients[0];
+                    const avatarUrl = recipient.avatar ? `https://cdn.discordapp.com/avatars/${recipient.id}/${recipient.avatar}.png` : `https://cdn.discordapp.com/embed/avatars/0.png`;
+                    
+                    const div = document.createElement('div');
+                    div.className = 'channel-item';
+                    div.id = `channel-${channel.id}`;
+                    div.innerHTML = `<img src="${avatarUrl}" style="width:24px; height:24px; border-radius:50%;"> ${recipient.username}`;
+                    div.onclick = () => openChannel(channel.id, recipient.username, true);
+                    dmContainer.appendChild(div);
+                }
+                
+                openChannel(channel.id, channel.recipients[0].username, true);
+
+            } catch (err) {
+                alert("Error al abrir DM. Verifica que la ID sea correcta y el bot tenga acceso al usuario.");
+            }
+        }
+
+        async function openChannel(channelId, channelName, isDM) {
+            activeChannelId = channelId;
             document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
-            document.getElementById(`channel-${channelId}`).classList.add('active');
-            document.getElementById('chat-header').innerText = `# ${channelName}`;
+            
+            const item = document.getElementById(`channel-${channelId}`);
+            if(item) item.classList.add('active');
+            
+            document.getElementById('chat-title').innerText = isDM ? `@${channelName}` : channelName;
             
             const input = document.getElementById('chat-input');
             input.disabled = false;
-            document.getElementById('btn-embed').disabled = false;
-            input.placeholder = `Enviar mensaje a #${channelName}`;
+            input.placeholder = `Enviar mensaje a ${isDM ? '@' : '#'}${channelName}`;
             input.focus();
+            document.getElementById('btn-embed').classList.remove('disabled');
 
-            loadMessages(channelId);
-        }
-
-        async function loadMessages(channelId) {
             const msgsContainer = document.getElementById('messages');
-            msgsContainer.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--text-muted);">Cargando historial...</div>';
-
+            msgsContainer.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Cargando mensajes...</div>';
+            
             try {
                 const messages = await apiRequest(`/channels/${channelId}/messages?limit=50`);
                 msgsContainer.innerHTML = '';
                 messages.reverse().forEach(msg => renderMessage(msg));
                 scrollToBottom();
             } catch (err) {
-                msgsContainer.innerHTML = '<div style="color:var(--danger);">Error cargando mensajes.</div>';
+                msgsContainer.innerHTML = '<div style="color:var(--danger); padding:20px;">Error cargando historial.</div>';
             }
         }
 
+        // ==========================================
+        //  CHAT Y MENSAJERÍA
+        // ==========================================
         function renderMessage(msg) {
-            const msgsContainer = document.getElementById('messages');
-            const avatarUrl = msg.author.avatar 
-                ? `https://cdn.discordapp.com/avatars/${msg.author.id}/${msg.author.avatar}.png`
-                : `https://cdn.discordapp.com/embed/avatars/${parseInt(msg.author.discriminator || 0) % 5}.png`;
+            // Evitar duplicados por si el websocket reenvía el mensaje optimista
+            if (document.getElementById('msg-' + msg.id)) return;
 
-            // Formatear fecha
+            const msgsContainer = document.getElementById('messages');
+            const avatarUrl = msg.author.avatar ? `https://cdn.discordapp.com/avatars/${msg.author.id}/${msg.author.avatar}.png` : `https://cdn.discordapp.com/embed/avatars/${parseInt(msg.author.discriminator || 0) % 5}.png`;
             const date = new Date(msg.timestamp);
-            const timeString = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const timeString = `Hoy a las ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
 
             let embedsHtml = '';
             if (msg.embeds && msg.embeds.length > 0) {
@@ -500,12 +674,14 @@
 
             const div = document.createElement('div');
             div.className = 'message';
-            div.id = `msg-${msg.id}`;
+            div.id = 'msg-' + msg.id; // Asignamos el ID
+            if(msg.temp) div.style.opacity = '0.7'; // Más transparente si es renderizado optimista
+            
             div.innerHTML = `
                 <img src="${avatarUrl}" class="avatar">
                 <div class="message-content">
                     <div class="message-author">
-                        ${escapeHTML(msg.author.username || msg.author.global_name)} 
+                        ${escapeHTML(msg.author.username || msg.author.global_name)}
                         <span class="message-date">${timeString}</span>
                     </div>
                     <div class="message-text">${escapeHTML(msg.content)}</div>
@@ -520,32 +696,74 @@
             msgsContainer.scrollTop = msgsContainer.scrollHeight;
         }
 
-        // Enviar mensaje Zero-Lag
+        let typingTimeout = null;
+        document.getElementById('chat-input').addEventListener('input', () => {
+            if (!activeChannelId || typingTimeout) return;
+            apiRequest(`/channels/${activeChannelId}/typing`, { method: 'POST' }).catch(()=>{});
+            typingTimeout = setTimeout(() => { typingTimeout = null; }, 9000);
+        });
+
+        // BUG FIX: Sistema Zero-Lag (Renderizado Optimista)
         document.getElementById('chat-input').addEventListener('keypress', async function (e) {
             if (e.key === 'Enter' && this.value.trim() !== '') {
                 const content = this.value.trim();
                 this.value = ''; 
-                
-                // Limpiar timeout de typing para no enviarlo repetido
                 clearTimeout(typingTimeout);
                 typingTimeout = null;
                 
                 if (activeChannelId) {
+                    // 1. Mostrar de manera inmediata en la pantalla (A Tiempo Real)
+                    const tempId = 'temp-' + Date.now();
+                    const optimistiMsg = {
+                        id: tempId,
+                        author: botData,
+                        content: content,
+                        timestamp: new Date().toISOString(),
+                        temp: true // Marcarlo como temporal
+                    };
+                    renderMessage(optimistiMsg);
+                    scrollToBottom();
+
+                    // 2. Mandarlo a la API en segundo plano
                     try {
-                        await apiRequest(`/channels/${activeChannelId}/messages`, {
-                            method: 'POST',
-                            body: { content: content }
-                        });
-                    } catch (err) { console.error(err); }
+                        const response = await apiRequest(`/channels/${activeChannelId}/messages`, { method: 'POST', body: { content } });
+                        // Reemplazar el id temporal por el real y quitar la transparencia
+                        const tempEl = document.getElementById('msg-' + tempId);
+                        if(tempEl) {
+                            tempEl.id = 'msg-' + response.id;
+                            tempEl.style.opacity = '1';
+                        }
+                    } catch (err) { 
+                        // Marcar rojo o más transparente si falla
+                        const tempEl = document.getElementById('msg-' + tempId);
+                        if(tempEl) tempEl.style.opacity = '0.3';
+                    }
                 }
             }
         });
 
+        async function sendEmbedModal() {
+            const title = document.getElementById('embed-title').value;
+            const desc = document.getElementById('embed-desc').value;
+            const colorHex = document.getElementById('embed-color').value.replace('#', '');
+            
+            if (!activeChannelId || (!title && !desc)) return;
+            const decColor = parseInt(colorHex, 16) || 0;
+
+            try {
+                await apiRequest(`/channels/${activeChannelId}/messages`, {
+                    method: 'POST',
+                    body: { embeds: [{ title: title, description: desc, color: decColor }] }
+                });
+                closeModal('embed-modal');
+                document.getElementById('embed-title').value = '';
+                document.getElementById('embed-desc').value = '';
+            } catch (err) { alert("Error enviando Embed"); }
+        }
+
         function escapeHTML(str) {
             if(!str) return '';
-            return str.replace(/[&<>'"]/g, 
-                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag])
-            );
+            return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag]));
         }
     </script>
 </body>
