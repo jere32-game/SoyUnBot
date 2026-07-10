@@ -156,13 +156,42 @@
         #chat-header svg { width: 24px; height: 24px; fill: var(--text-muted); }
         
         #messages { flex-grow: 1; padding: 16px 0; overflow-y: auto; display: flex; flex-direction: column; }
-        .message { padding: 8px 16px; display: flex; line-height: 1.375rem; transition: opacity 0.2s; }
+        .message { padding: 8px 16px; display: flex; line-height: 1.375rem; transition: opacity 0.2s; position: relative; }
         .message:hover { background-color: var(--bg-message-hover); }
+        
+        /* Controles extra para mensajes (Reacciones) */
+        .message-actions {
+            position: absolute; right: 16px; top: -10px; background: var(--bg-secondary);
+            border: 1px solid var(--bg-tertiary); border-radius: 4px; display: none; padding: 2px;
+        }
+        .message:hover .message-actions { display: flex; }
+        .action-icon {
+            cursor: pointer; padding: 4px 8px; color: var(--interactive-normal); font-size: 14px;
+        }
+        .action-icon:hover { background: var(--bg-message-hover); color: white; border-radius: 3px; }
+
         .message img.avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 16px; margin-top: 2px; }
         .message-content { flex-grow: 1; }
-        .message-author { font-weight: 500; color: white; display: flex; align-items: center; gap: 8px; font-size: 16px; }
+        .message-author { font-weight: 500; color: white; display: flex; align-items: center; font-size: 16px; }
+        .message-handle { font-size: 13px; color: var(--text-muted); font-weight: 400; margin-left: 6px; margin-right: 6px; }
         .message-date { font-size: 12px; color: var(--text-muted); font-weight: 400; }
         .message-text { color: var(--text-normal); word-wrap: break-word; }
+
+        /* Nuevas clases para Media y Emojis */
+        .custom-emoji { width: 1.375em; height: 1.375em; vertical-align: bottom; }
+        .media-container { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+        .media-attachment { max-width: 400px; max-height: 300px; border-radius: 8px; object-fit: contain; background: var(--bg-secondary); }
+        .yt-iframe { border-radius: 8px; border: none; width: 400px; height: 225px; }
+
+        /* Reacciones en el mensaje */
+        .reactions-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+        .reaction-badge { 
+            background: var(--bg-secondary); border: 1px solid transparent; border-radius: 4px; 
+            padding: 2px 6px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px;
+        }
+        .reaction-badge:hover { border-color: var(--text-muted); }
+        .reaction-badge.reacted { background: rgba(88, 101, 242, 0.15); border-color: var(--brand); }
+        .reaction-emoji { width: 16px; height: 16px; }
 
         /* Input */
         #input-area { padding: 0 16px 24px 16px; background-color: var(--bg-primary); }
@@ -174,7 +203,7 @@
             cursor: pointer; padding: 10px 0; display: flex; align-items: center; justify-content: center;
         }
         .action-btn:hover { color: var(--interactive-hover); }
-        .action-btn.disabled { opacity: 0.5; cursor: not-allowed; }
+        .action-btn.disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
         #chat-input {
             flex-grow: 1; border: none; background: transparent; color: var(--text-normal);
             font-size: 16px; outline: none; padding: 15px 0; font-family: inherit;
@@ -190,7 +219,7 @@
             box-shadow: 0 0 0 1px rgba(0,0,0,0.1), 0 2px 10px rgba(0,0,0,0.2); overflow: hidden;
         }
         .modal-header { padding: 16px; background: var(--bg-primary); color: white; font-weight: 600; font-size: 20px; display: flex; justify-content: space-between;}
-        .modal-body { padding: 16px; background: var(--bg-secondary); }
+        .modal-body { padding: 16px; background: var(--bg-secondary); max-height: 400px; overflow-y: auto;}
         .modal-footer { padding: 16px; background: var(--bg-secondary); display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--bg-tertiary);}
         
         .form-group { margin-bottom: 15px; }
@@ -210,6 +239,15 @@
         }
         .embed-title { font-weight: 600; color: white; margin-bottom: 8px; }
         .embed-desc { font-size: 14px; color: var(--text-normal); }
+
+        /* Emoji Grid */
+        #emoji-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+        .emoji-item {
+            width: 32px; height: 32px; cursor: pointer; border-radius: 4px; padding: 6px;
+            transition: background-color 0.2s; display: flex; justify-content: center; align-items: center;
+        }
+        .emoji-item:hover { background-color: var(--bg-message-hover); }
+        .emoji-item img { max-width: 100%; max-height: 100%; object-fit: contain; }
     </style>
 </head>
 <body>
@@ -265,6 +303,19 @@
         </div>
     </div>
 
+    <div id="emoji-modal" class="modal-overlay">
+        <div class="modal-content" style="width: 360px;">
+            <div class="modal-header">
+                <div style="font-size: 16px;">Emojis del Servidor</div>
+                <div style="cursor:pointer; color:var(--text-muted)" onclick="closeModal('emoji-modal')">✕</div>
+            </div>
+            <div class="modal-body">
+                <div id="emoji-grid">
+                    </div>
+            </div>
+        </div>
+    </div>
+
     <div id="app">
         <div id="guilds">
             <div class="guild-wrapper active" id="wrapper-home" onclick="loadHome()">
@@ -315,9 +366,13 @@
             <div id="messages"></div>
             <div id="input-area">
                 <div class="input-wrapper">
-                    <button class="action-btn disabled" id="btn-embed" onclick="document.getElementById('embed-modal').style.display='flex'">
+                    <button class="action-btn disabled" id="btn-embed" onclick="document.getElementById('embed-modal').style.display='flex'" title="Enviar Embed">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
                     </button>
+                    <button class="action-btn disabled" id="btn-emoji" onclick="openEmojiPicker('input')" title="Emojis del Servidor">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.5 8c-2.33 0-4.31-1.46-5.11-3.5h10.22c-.8 2.04-2.78 3.5-5.11 3.5zM8.5 11c-.83 0-1.5-.67-1.5-1.5S7.67 8 8.5 8s1.5.67 1.5 1.5S9.33 11 8.5 11zm7 0c-.83 0-1.5-.67-1.5-1.5S14.67 8 15.5 8s1.5.67 1.5 1.5S16.33 11 15.5 11z"/></svg>
+                    </button>
+                    
                     <input type="text" id="chat-input" placeholder="Escribe un mensaje..." disabled>
                 </div>
             </div>
@@ -360,6 +415,10 @@
         let activeGuildId = null;
         let activeChannelId = null;
         let isDMView = true;
+        
+        // Emojis y Modal Variables
+        let currentGuildEmojis = [];
+        let emojiTarget = '';
 
         // Sonido oficial de notificación
         const pingSound = new Audio('https://www.myinstants.com/media/sounds/discord-notification.mp3');
@@ -435,6 +494,19 @@
                 if (data.channel_id === activeChannelId) {
                     renderMessage(data);
                     scrollToBottom();
+                }
+            }
+            // Actualizar reacciones a tiempo real
+            if (type === 'MESSAGE_REACTION_ADD' || type === 'MESSAGE_REACTION_REMOVE') {
+                if (data.channel_id === activeChannelId) {
+                    // Refrescar mensaje completo para actualizar contador de reacciones (solución simple)
+                    apiRequest(`/channels/${activeChannelId}/messages/${data.message_id}`).then(msg => {
+                        const msgEl = document.getElementById('msg-' + msg.id);
+                        if(msgEl) {
+                            msgEl.remove();
+                            renderMessage(msg); // Renderiza de nuevo para actualizar reacciones
+                        }
+                    }).catch(()=>{});
                 }
             }
         }
@@ -540,6 +612,7 @@
 
         function loadHome() {
             isDMView = true;
+            currentGuildEmojis = []; // Vaciamos emojis de servidor
             document.querySelectorAll('.guild-wrapper').forEach(el => el.classList.remove('active'));
             document.getElementById('wrapper-home').classList.add('active');
             
@@ -548,6 +621,22 @@
             document.getElementById('dms-list').style.display = 'block';
             
             resetChatArea();
+            renderSavedDMs(); // Cargar DMs desde LocalStorage
+        }
+
+        function renderSavedDMs() {
+            const dmContainer = document.getElementById('dm-items');
+            dmContainer.innerHTML = '';
+            const savedDMs = JSON.parse(localStorage.getItem('discord_v3_dms')) || [];
+            
+            savedDMs.forEach(dm => {
+                const div = document.createElement('div');
+                div.className = 'channel-item';
+                div.id = `channel-${dm.channelId}`;
+                div.innerHTML = `<img src="${dm.avatarUrl}" style="width:24px; height:24px; border-radius:50%;"> ${escapeHTML(dm.username)}`;
+                div.onclick = () => openChannel(dm.channelId, dm.username, true);
+                dmContainer.appendChild(div);
+            });
         }
 
         async function selectGuild(guildId, guildName) {
@@ -561,6 +650,7 @@
             
             resetChatArea();
 
+            // Cargar los canales
             try {
                 const channels = await apiRequest(`/guilds/${guildId}/channels`);
                 const cList = document.getElementById('channels-list');
@@ -574,6 +664,14 @@
                     cList.appendChild(div);
                 });
             } catch (err) { console.error(err); }
+
+            // Cargar los emojis en el background
+            try {
+                currentGuildEmojis = await apiRequest(`/guilds/${guildId}/emojis`);
+            } catch(e) {
+                console.error("Error cargando emojis", e);
+                currentGuildEmojis = [];
+            }
         }
 
         function resetChatArea() {
@@ -583,10 +681,11 @@
             document.getElementById('chat-input').disabled = true;
             document.getElementById('chat-input').placeholder = "Selecciona un canal para escribir";
             document.getElementById('btn-embed').classList.add('disabled');
+            document.getElementById('btn-emoji').classList.add('disabled');
         }
 
         // ==========================================
-        //  SISTEMA DE DM POR ID
+        //  SISTEMA DE DM POR ID CON LOCALSTORAGE
         // ==========================================
         async function promptAddDM() {
             const userId = prompt("Introduce la ID de Discord del Usuario:");
@@ -598,21 +697,18 @@
                     body: { recipient_id: userId.trim() }
                 });
                 
-                const dmContainer = document.getElementById('dm-items');
+                const recipient = channel.recipients[0];
+                const avatarUrl = recipient.avatar ? `https://cdn.discordapp.com/avatars/${recipient.id}/${recipient.avatar}.png` : `https://cdn.discordapp.com/embed/avatars/0.png`;
                 
-                if(!document.getElementById(`channel-${channel.id}`)) {
-                    const recipient = channel.recipients[0];
-                    const avatarUrl = recipient.avatar ? `https://cdn.discordapp.com/avatars/${recipient.id}/${recipient.avatar}.png` : `https://cdn.discordapp.com/embed/avatars/0.png`;
-                    
-                    const div = document.createElement('div');
-                    div.className = 'channel-item';
-                    div.id = `channel-${channel.id}`;
-                    div.innerHTML = `<img src="${avatarUrl}" style="width:24px; height:24px; border-radius:50%;"> ${recipient.username}`;
-                    div.onclick = () => openChannel(channel.id, recipient.username, true);
-                    dmContainer.appendChild(div);
+                // Guardar en LocalStorage
+                let savedDMs = JSON.parse(localStorage.getItem('discord_v3_dms')) || [];
+                if (!savedDMs.find(dm => dm.channelId === channel.id)) {
+                    savedDMs.push({ channelId: channel.id, username: recipient.username, avatarUrl: avatarUrl });
+                    localStorage.setItem('discord_v3_dms', JSON.stringify(savedDMs));
                 }
-                
-                openChannel(channel.id, channel.recipients[0].username, true);
+
+                renderSavedDMs();
+                openChannel(channel.id, recipient.username, true);
 
             } catch (err) {
                 alert("Error al abrir DM. Verifica que la ID sea correcta y el bot tenga acceso al usuario.");
@@ -633,6 +729,7 @@
             input.placeholder = `Enviar mensaje a ${isDM ? '@' : '#'}${channelName}`;
             input.focus();
             document.getElementById('btn-embed').classList.remove('disabled');
+            document.getElementById('btn-emoji').classList.remove('disabled');
 
             const msgsContainer = document.getElementById('messages');
             msgsContainer.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Cargando mensajes...</div>';
@@ -640,6 +737,7 @@
             try {
                 const messages = await apiRequest(`/channels/${channelId}/messages?limit=50`);
                 msgsContainer.innerHTML = '';
+                // Renderizar y ordenar cronológicamente
                 messages.reverse().forEach(msg => renderMessage(msg));
                 scrollToBottom();
             } catch (err) {
@@ -648,7 +746,68 @@
         }
 
         // ==========================================
-        //  CHAT Y MENSAJERÍA
+        //  SELECTOR DE EMOJIS GLOBAL
+        // ==========================================
+        function openEmojiPicker(target) {
+            emojiTarget = target;
+            const grid = document.getElementById('emoji-grid');
+            grid.innerHTML = '';
+            
+            if (currentGuildEmojis.length === 0) {
+                grid.innerHTML = '<div style="color:var(--text-muted); padding: 10px; width:100%; text-align:center;">No hay emojis en este servidor o estás en DM.</div>';
+            } else {
+                currentGuildEmojis.forEach(em => {
+                    const ext = em.animated ? 'gif' : 'png';
+                    const url = `https://cdn.discordapp.com/emojis/${em.id}.${ext}?v=1`;
+                    
+                    const el = document.createElement('div');
+                    el.className = 'emoji-item';
+                    el.title = `:${em.name}:`;
+                    el.innerHTML = `<img src="${url}" alt="${em.name}">`;
+                    el.onclick = () => selectEmoji(em);
+                    
+                    grid.appendChild(el);
+                });
+            }
+            document.getElementById('emoji-modal').style.display = 'flex';
+        }
+
+        async function selectEmoji(em) {
+            closeModal('emoji-modal');
+            
+            if (emojiTarget === 'input') {
+                const input = document.getElementById('chat-input');
+                const emojiFormat = `<${em.animated ? 'a' : ''}:${em.name}:${em.id}>`;
+                input.value = input.value + (input.value.length > 0 ? ' ' : '') + emojiFormat;
+                input.focus();
+            } else if (emojiTarget.startsWith('reaction-')) {
+                const msgId = emojiTarget.split('-')[1];
+                const reactionStr = `${em.name}:${em.id}`;
+                try {
+                    await apiRequest(`/channels/${activeChannelId}/messages/${msgId}/reactions/${encodeURIComponent(reactionStr)}/@me`, { method: 'PUT' });
+                } catch (err) {
+                    alert("Error al reaccionar con el emoji.");
+                }
+            }
+        }
+
+        // ==========================================
+        //  PARSEADOR DE TEXTO Y EMOJIS
+        // ==========================================
+        function parseMessageContent(text) {
+            if (!text) return '';
+            let escaped = escapeHTML(text);
+            // Reemplaza <a:nombre:id> (animados) o <:nombre:id> (normales) por etiquetas <img>
+            escaped = escaped.replace(/<a?:(\w+):(\d+)>/g, (match, name, id) => {
+                const isAnimated = match.startsWith('<a:');
+                const ext = isAnimated ? 'gif' : 'png';
+                return `<img src="https://cdn.discordapp.com/emojis/${id}.${ext}?v=1" alt=":${name}:" title=":${name}:" class="custom-emoji">`;
+            });
+            return escaped;
+        }
+
+        // ==========================================
+        //  RENDERIZADO DE MENSAJES CON APODOS
         // ==========================================
         function renderMessage(msg) {
             // Evitar duplicados por si el websocket reenvía el mensaje optimista
@@ -659,33 +818,90 @@
             const date = new Date(msg.timestamp);
             const timeString = `Hoy a las ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
 
+            // --- Lógica de Apodos y Nombres ---
+            // Si el mensaje tiene un member y tiene nick (apodo en el server), lo usamos. Si no, su global name.
+            const displayName = (msg.member && msg.member.nick) ? msg.member.nick : (msg.author.global_name || msg.author.username);
+            const userHandle = `@${msg.author.username}`;
+
+            // 1. Contenido de Texto con Emojis Custom
+            const textContent = parseMessageContent(msg.content);
+
+            // 2. Procesar Multimedia (Imágenes y Videos de Attachments)
+            let mediaHtml = '';
+            if (msg.attachments && msg.attachments.length > 0) {
+                mediaHtml += '<div class="media-container">';
+                msg.attachments.forEach(att => {
+                    if (att.content_type && att.content_type.startsWith('image/')) {
+                        mediaHtml += `<img src="${att.url}" class="media-attachment" alt="attachment">`;
+                    } else if (att.content_type && att.content_type.startsWith('video/')) {
+                        mediaHtml += `<video src="${att.url}" controls class="media-attachment"></video>`;
+                    } else {
+                        mediaHtml += `<a href="${att.url}" target="_blank" style="color: var(--brand);">Descargar adjunto: ${escapeHTML(att.filename)}</a>`;
+                    }
+                });
+                mediaHtml += '</div>';
+            }
+
+            // 3. Procesar Embeds (GIFs de Tenor, YouTube, etc)
             let embedsHtml = '';
             if (msg.embeds && msg.embeds.length > 0) {
                 msg.embeds.forEach(e => {
-                    const colorStyle = e.color ? `border-color: #${e.color.toString(16).padStart(6, '0')};` : '';
-                    embedsHtml += `
-                        <div class="embed" style="${colorStyle}">
-                            ${e.title ? `<div class="embed-title">${escapeHTML(e.title)}</div>` : ''}
-                            ${e.description ? `<div class="embed-desc">${escapeHTML(e.description)}</div>` : ''}
+                    if (e.type === 'video' && e.video && e.video.url.includes('youtube.com/embed/')) {
+                        embedsHtml += `<iframe src="${e.video.url}" class="yt-iframe" allowfullscreen></iframe>`;
+                    } else if (e.type === 'image' || e.type === 'gifv' || e.image) {
+                        const imgUrl = e.image ? e.image.url : (e.thumbnail ? e.thumbnail.url : null);
+                        if (imgUrl) embedsHtml += `<img src="${imgUrl}" class="media-attachment">`;
+                    } else {
+                        const colorStyle = e.color ? `border-color: #${e.color.toString(16).padStart(6, '0')};` : '';
+                        embedsHtml += `
+                            <div class="embed" style="${colorStyle}">
+                                ${e.title ? `<div class="embed-title">${escapeHTML(e.title)}</div>` : ''}
+                                ${e.description ? `<div class="embed-desc">${parseMessageContent(e.description)}</div>` : ''}
+                            </div>
+                        `;
+                    }
+                });
+            }
+
+            // 4. Procesar Reacciones
+            let reactionsHtml = '';
+            if (msg.reactions && msg.reactions.length > 0) {
+                reactionsHtml += '<div class="reactions-list">';
+                msg.reactions.forEach(r => {
+                    let emojiSrc = r.emoji.id ? `https://cdn.discordapp.com/emojis/${r.emoji.id}.${r.emoji.animated ? 'gif' : 'png'}?v=1` : null;
+                    let emojiDisplay = emojiSrc ? `<img src="${emojiSrc}" class="reaction-emoji">` : r.emoji.name;
+                    // Al hacer click a una reaccion existente, abrira el panel, o puedes mandar el comando directo.
+                    reactionsHtml += `
+                        <div class="reaction-badge ${r.me ? 'reacted' : ''}" onclick="openEmojiPicker('reaction-${msg.id}')" title="${r.emoji.name}">
+                            ${emojiDisplay} ${r.count}
                         </div>
                     `;
                 });
+                reactionsHtml += '</div>';
             }
 
             const div = document.createElement('div');
             div.className = 'message';
-            div.id = 'msg-' + msg.id; // Asignamos el ID
-            if(msg.temp) div.style.opacity = '0.7'; // Más transparente si es renderizado optimista
+            div.id = 'msg-' + msg.id; 
+            if(msg.temp) div.style.opacity = '0.7'; 
             
             div.innerHTML = `
                 <img src="${avatarUrl}" class="avatar">
                 <div class="message-content">
                     <div class="message-author">
-                        ${escapeHTML(msg.author.username || msg.author.global_name)}
+                        ${escapeHTML(displayName)} 
+                        <span class="message-handle">(${escapeHTML(userHandle)})</span>
                         <span class="message-date">${timeString}</span>
                     </div>
-                    <div class="message-text">${escapeHTML(msg.content)}</div>
+                    <div class="message-text">${textContent}</div>
+                    ${mediaHtml}
                     ${embedsHtml}
+                    ${reactionsHtml}
+                </div>
+                <div class="message-actions">
+                    <div class="action-icon" onclick="openEmojiPicker('reaction-${msg.id}')" title="Añadir Reacción del Servidor">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+                    </div>
                 </div>
             `;
             msgsContainer.appendChild(div);
@@ -719,7 +935,7 @@
                         author: botData,
                         content: content,
                         timestamp: new Date().toISOString(),
-                        temp: true // Marcarlo como temporal
+                        temp: true 
                     };
                     renderMessage(optimistiMsg);
                     scrollToBottom();
@@ -727,14 +943,12 @@
                     // 2. Mandarlo a la API en segundo plano
                     try {
                         const response = await apiRequest(`/channels/${activeChannelId}/messages`, { method: 'POST', body: { content } });
-                        // Reemplazar el id temporal por el real y quitar la transparencia
                         const tempEl = document.getElementById('msg-' + tempId);
                         if(tempEl) {
                             tempEl.id = 'msg-' + response.id;
                             tempEl.style.opacity = '1';
                         }
                     } catch (err) { 
-                        // Marcar rojo o más transparente si falla
                         const tempEl = document.getElementById('msg-' + tempId);
                         if(tempEl) tempEl.style.opacity = '0.3';
                     }
