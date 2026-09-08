@@ -24,7 +24,13 @@
             --danger: #da373c;
             --warning: #f1c40f;
             --divider: #3f4147;
+            --status-online: #23a559;
+            --status-idle: #f0b232;
+            --status-dnd: #f23f42;
+            --status-offline: #80848e;
         }
+
+        * { box-sizing: border-box; }
 
         body {
             margin: 0; padding: 0;
@@ -37,6 +43,89 @@
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: var(--bg-secondary); }
         ::-webkit-scrollbar-thumb { background: #1a1b1e; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #131316; }
+
+        /* ==========================================
+           ANIMACIONES GLOBALES
+           ========================================== */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.94); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.5); }
+            70% { transform: scale(1.08); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes pulseRing {
+            0% { box-shadow: 0 0 0 0 rgba(88, 101, 242, 0.55); }
+            70% { box-shadow: 0 0 0 8px rgba(88, 101, 242, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(88, 101, 242, 0); }
+        }
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+            30% { transform: translateY(-4px); opacity: 1; }
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        @keyframes shakeError {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-4px); }
+            40%, 80% { transform: translateX(4px); }
+        }
+        @keyframes skeletonPulse {
+            0%, 100% { opacity: 0.35; }
+            50% { opacity: 0.7; }
+        }
+
+        .message { animation: fadeInUp 0.22s ease-out; }
+        .guild-icon, .channel-item, .member-item, .voice-user { transition: background-color 0.18s ease, color 0.18s ease, border-radius 0.18s ease, transform 0.12s ease; }
+        .channel-item:active, .member-item:active { transform: scale(0.98); }
+        .guild-icon:active { transform: scale(0.94); }
+        .action-btn, .action-icon, .settings-btn, .add-dm-btn, .mod-btn { transition: color 0.15s ease, background-color 0.15s ease, transform 0.1s ease; }
+        .action-btn:active, .action-icon:active, .settings-btn:active { transform: scale(0.92); }
+        .btn-primary, .btn-secondary { transition: background-color 0.18s ease, transform 0.1s ease, box-shadow 0.18s ease; }
+        .btn-primary:active { transform: scale(0.97); }
+        .status-dot { transition: background-color 0.25s ease; }
+        .avatar-wrapper img, .member-item img, .message img.avatar { transition: transform 0.18s ease; }
+        .member-item:hover img { transform: scale(1.06); }
+
+        .modal-overlay.visible { display: flex !important; animation: fadeIn 0.15s ease-out; }
+        .modal-overlay.visible .modal-content { animation: scaleIn 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+
+        #chat-area, #sidebar-right { animation: fadeIn 0.2s ease-out; }
+        .category-channels { animation: fadeIn 0.15s ease-out; }
+
+        .new-message-flash { animation: newMsgFlash 1s ease-out; }
+        @keyframes newMsgFlash {
+            0% { background-color: rgba(88, 101, 242, 0.12); }
+            100% { background-color: transparent; }
+        }
+
+        .guild-wrapper.active .guild-icon { animation: popIn 0.25s ease-out; }
+        .connecting-spinner {
+            display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 6px; vertical-align: middle;
+        }
+        .login-status-error { animation: shakeError 0.4s ease-in-out; }
+
+        .skeleton-line {
+            height: 14px; border-radius: 4px; background: linear-gradient(90deg, var(--bg-tertiary), var(--bg-message-hover), var(--bg-tertiary));
+            background-size: 200% 100%; animation: skeletonPulse 1.3s ease-in-out infinite;
+        }
 
         /* Pantalla de Login */
         #login-screen {
@@ -125,6 +214,121 @@
             font-size: 12px; font-weight: 600; color: var(--text-muted);
             text-transform: uppercase; padding: 12px 8px 4px 8px; display: flex; justify-content: space-between;
         }
+
+        /* ==========================================
+           CATEGORÍAS DE CANALES (organización tipo server real)
+           ========================================== */
+        .channel-category { margin-bottom: 2px; }
+        .channel-category-header {
+            display: flex; align-items: center; gap: 4px; padding: 16px 4px 4px 4px;
+            font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase;
+            cursor: pointer; user-select: none; letter-spacing: 0.02em;
+        }
+        .channel-category-header:hover { color: var(--interactive-hover); }
+        .channel-category-header svg {
+            width: 12px; height: 12px; fill: currentColor; transition: transform 0.15s ease; flex-shrink: 0;
+        }
+        .channel-category.collapsed .channel-category-header svg { transform: rotate(-90deg); }
+        .channel-category.collapsed .category-channels { display: none; }
+        .category-channels { display: flex; flex-direction: column; gap: 1px; }
+        .no-category-channels { display: flex; flex-direction: column; gap: 1px; margin-bottom: 4px; }
+
+        /* ==========================================
+           PRESENCIA / ESTADO EN LÍNEA
+           ========================================== */
+        .presence-dot {
+            width: 10px; height: 10px; border-radius: 50%; border: 2.5px solid var(--bg-secondary);
+            position: absolute; bottom: -1px; right: -1px; flex-shrink: 0;
+        }
+        .presence-dot.status-online { background-color: var(--status-online); }
+        .presence-dot.status-idle { background-color: var(--status-idle); }
+        .presence-dot.status-dnd { background-color: var(--status-dnd); }
+        .presence-dot.status-offline, .presence-dot.status-unknown { background-color: var(--status-offline); }
+
+        .member-avatar-wrap { position: relative; width: 32px; height: 32px; flex-shrink: 0; }
+        .member-avatar-wrap img { width: 32px; height: 32px; border-radius: 50%; display: block; }
+
+        .member-item.offline-member { opacity: 0.5; }
+        .member-item.offline-member:hover { opacity: 0.85; }
+        .member-item-info { display: flex; flex-direction: column; overflow: hidden; flex-grow: 1; min-width: 0; }
+        .member-item-name { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .member-role-color { }
+        .member-section-label {
+            font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase;
+            padding: 16px 8px 4px 8px;
+        }
+        .member-item { position: relative; }
+        .member-mod-trigger {
+            margin-left: auto; opacity: 0; background: transparent; border: none; color: var(--interactive-normal);
+            cursor: pointer; padding: 4px; border-radius: 4px; display: flex; align-items: center;
+        }
+        .member-item:hover .member-mod-trigger { opacity: 1; }
+        .member-mod-trigger:hover { background: var(--bg-tertiary); color: white; }
+        .member-mod-trigger svg { width: 16px; height: 16px; fill: currentColor; }
+
+        /* ==========================================
+           MENÚ DE MODERACIÓN (solo visible si el bot tiene admin)
+           ========================================== */
+        .mod-menu {
+            position: fixed; background: var(--bg-secondary); border-radius: 6px; z-index: 300;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.35); padding: 6px; min-width: 200px;
+            display: none; animation: scaleIn 0.12s ease-out; border: 1px solid var(--bg-tertiary);
+        }
+        .mod-menu.visible { display: block; }
+        .mod-menu-header {
+            padding: 8px 10px 6px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+            color: var(--text-muted); border-bottom: 1px solid var(--divider); margin-bottom: 4px;
+        }
+        .mod-menu-item {
+            padding: 8px 10px; font-size: 14px; color: var(--interactive-normal); cursor: pointer;
+            border-radius: 4px; display: flex; align-items: center; gap: 8px;
+        }
+        .mod-menu-item:hover { background: var(--brand); color: white; }
+        .mod-menu-item.danger:hover { background: var(--danger); color: white; }
+        .mod-menu-item svg { width: 16px; height: 16px; fill: currentColor; flex-shrink: 0; }
+        .mod-menu-roles { max-height: 180px; overflow-y: auto; }
+        .mod-menu-role-item { justify-content: space-between; }
+        .mod-menu-role-item .role-check { width: 14px; height: 14px; opacity: 0; }
+        .mod-menu-role-item.has-role .role-check { opacity: 1; }
+        .mod-badge-admin {
+            font-size: 9px; background: var(--success); color: white; padding: 1px 5px;
+            border-radius: 3px; margin-left: 6px; font-weight: 700; text-transform: uppercase; vertical-align: middle;
+        }
+        .no-admin-notice {
+            font-size: 12px; color: var(--text-muted); text-align: center; padding: 10px;
+            background: var(--bg-tertiary); border-radius: 4px; margin: 8px;
+        }
+
+        /* ==========================================
+           INDICADOR "ESTÁ ESCRIBIENDO..."
+           ========================================== */
+        #typing-indicator {
+            height: 0; overflow: hidden; padding: 0 16px; font-size: 13px; color: var(--text-muted);
+            display: flex; align-items: center; gap: 8px; transition: height 0.15s ease, padding 0.15s ease;
+        }
+        #typing-indicator.active { height: 22px; padding: 4px 16px; }
+        .typing-dots { display: flex; gap: 3px; align-items: center; }
+        .typing-dots span {
+            width: 5px; height: 5px; border-radius: 50%; background: var(--text-muted);
+            animation: typingBounce 1.2s infinite ease-in-out;
+        }
+        .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+        .typing-text b { color: var(--interactive-hover); font-weight: 600; }
+
+        /* Toast de aviso rápido (banear, etc.) */
+        #toast-container {
+            position: fixed; bottom: 20px; right: 20px; z-index: 500; display: flex; flex-direction: column; gap: 8px;
+        }
+        .toast {
+            background: var(--bg-secondary); color: white; padding: 12px 16px; border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-size: 14px; min-width: 220px;
+            animation: fadeInUp 0.2s ease-out; border-left: 3px solid var(--brand);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .toast.toast-success { border-left-color: var(--success); }
+        .toast.toast-error { border-left-color: var(--danger); }
+        .toast.toast-hide { animation: fadeIn 0.25s ease-in reverse; opacity: 0; }
 
         /* Controles de DM */
         .add-dm-btn {
@@ -272,6 +476,34 @@
         }
         .emoji-item:hover { background-color: var(--bg-message-hover); }
         .emoji-item img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+        /* Vista previa de avatar en el modal de personalización */
+        .avatar-preview-row { display: flex; align-items: center; gap: 16px; margin-bottom: 15px; }
+        .avatar-preview-wrap {
+            width: 72px; height: 72px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+            border: 3px solid var(--bg-tertiary); position: relative; cursor: pointer; transition: transform 0.15s ease;
+        }
+        .avatar-preview-wrap:hover { transform: scale(1.04); }
+        .avatar-preview-wrap:hover .avatar-preview-overlay { opacity: 1; }
+        .avatar-preview-wrap img { width: 100%; height: 100%; object-fit: cover; }
+        .avatar-preview-overlay {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.55); color: white; font-size: 11px;
+            display: flex; align-items: center; justify-content: center; text-align: center; opacity: 0;
+            transition: opacity 0.15s ease; font-weight: 600;
+        }
+
+        .connected-guild-badge {
+            font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: 700; text-transform: uppercase;
+        }
+        .connected-guild-badge.yes { background: rgba(35, 165, 89, 0.2); color: var(--status-online); }
+        .connected-guild-badge.no { background: rgba(128, 132, 142, 0.2); color: var(--text-muted); }
+
+        .intents-warning {
+            background: rgba(241, 196, 15, 0.1); border: 1px solid rgba(241, 196, 15, 0.3);
+            color: #f1c40f; font-size: 12px; padding: 10px 12px; border-radius: 6px; margin-top: 12px;
+            text-align: left; line-height: 1.5;
+        }
+        .intents-warning a { color: #f1c40f; }
     </style>
 </head>
 <body>
@@ -281,8 +513,11 @@
             <h2>Estación de Control V3</h2>
             <p style="color: var(--text-muted); font-size: 14px; margin-top: 0;">Inicia sesión con tu Token de Bot</p>
             <input type="password" id="bot-token" placeholder="Token del Bot...">
-            <button onclick="startClient()">Conectar Gateway</button>
+            <button id="connect-btn" onclick="startClient()">Conectar Gateway</button>
             <p id="login-status" style="color: var(--danger); margin-top: 15px; font-size: 13px;"></p>
+            <div class="intents-warning">
+                ⚠️ Este panel necesita los intents privilegiados <b>"Server Members Intent"</b> y <b>"Presence Intent"</b> activados en el Developer Portal de Discord (pestaña Bot de tu aplicación) para poder mostrar quién está conectado y los roles de cada miembro. Si no los activas, la conexión se cerrará sola.
+            </div>
         </div>
     </div>
 
@@ -293,13 +528,25 @@
                 <div style="cursor:pointer; color:var(--text-muted)" onclick="closeModal('settings-modal')">✕</div>
             </div>
             <div class="modal-body">
+                <div class="avatar-preview-row">
+                    <div class="avatar-preview-wrap" onclick="document.getElementById('edit-bot-avatar').click()" title="Click para cambiar">
+                        <img id="avatar-preview-img" src="https://cdn.discordapp.com/embed/avatars/0.png">
+                        <div class="avatar-preview-overlay">Cambiar<br>foto</div>
+                    </div>
+                    <div style="flex-grow:1;">
+                        <label style="display:block; color:var(--interactive-normal); font-size:12px; font-weight:700; margin-bottom:6px; text-transform:uppercase;">Foto de perfil</label>
+                        <input type="file" id="edit-bot-avatar" accept="image/png, image/jpeg, image/gif" style="display:none;" onchange="previewAvatarFile(this)">
+                        <button type="button" class="btn-secondary" style="padding:6px 10px; background:var(--bg-tertiary);" onclick="document.getElementById('edit-bot-avatar').click()">Seleccionar imagen</button>
+                    </div>
+                </div>
                 <div class="form-group">
                     <label>Nombre del Bot</label>
                     <input type="text" id="edit-bot-name" placeholder="Nuevo nombre...">
                 </div>
                 <div class="form-group">
-                    <label>Avatar (Auto Data URL Converter)</label>
-                    <input type="file" id="edit-bot-avatar" accept="image/png, image/jpeg, image/gif">
+                    <label>Banner / Portada del perfil</label>
+                    <input type="file" id="edit-bot-banner" accept="image/png, image/jpeg, image/gif">
+                    <p style="font-size:11px; color:var(--text-muted); margin:4px 0 0 0;">Requiere que el bot tenga Nitro o el permiso otorgado por Discord; si falla, se avisará sin afectar el resto de los cambios.</p>
                 </div>
                 <div class="form-group">
                     <label>Estado de Conexión</label>
@@ -388,9 +635,13 @@
                 <span id="chat-title">Selecciona un canal...</span>
             </div>
             <div id="messages"></div>
+            <div id="typing-indicator">
+                <div class="typing-dots"><span></span><span></span><span></span></div>
+                <span class="typing-text" id="typing-text"></span>
+            </div>
             <div id="input-area">
                 <div class="input-wrapper">
-                    <button class="action-btn disabled" id="btn-embed" onclick="document.getElementById('embed-modal').style.display='flex'" title="Enviar Embed">
+                    <button class="action-btn disabled" id="btn-embed" onclick="openModal('embed-modal')" title="Enviar Embed">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
                     </button>
                     <button class="action-btn disabled" id="btn-emoji" onclick="openEmojiPicker('input')" title="Emojis del Servidor">
@@ -403,10 +654,17 @@
         </div>
         
         <div id="sidebar-right">
-            <div class="members-header">Miembros Conectados</div>
+            <div class="members-header">
+                <span>Miembros</span>
+                <span id="bot-admin-badge"></span>
+            </div>
             <div id="members-list"></div>
         </div>
     </div>
+
+    <!-- Menú contextual de moderación (solo se rellena/usa si el bot tiene Administrator) -->
+    <div id="mod-menu" class="mod-menu"></div>
+    <div id="toast-container"></div>
 
     <div id="embed-modal" class="modal-overlay">
         <div class="modal-content" style="width: 320px;">
@@ -452,6 +710,18 @@
         let guildVoiceStates = {};
         let emojiTarget = '';
 
+        // Presencias, roles, permisos y typing
+        let guildPresences = {};      // { guildId: { userId: presenceData } }
+        let guildRolesCache = {};     // { guildId: [roles] }
+        let guildMembersCache = {};   // { guildId: { userId: memberData } }
+        let botIsAdminInGuild = {};   // { guildId: bool } -> controla si se muestra moderación
+        let typingUsers = {};         // { channelId: { userId: { name, timeoutId } } }
+        let modMenuTargetGuildId = null;
+        let modMenuTargetUserId = null;
+
+        // Permission bit para Administrator (Discord Permissions)
+        const PERMISSION_ADMINISTRATOR = 0x8n; // BigInt porque los permisos vienen como string de 64 bits
+
         // Sonido oficial de notificación
         const pingSound = new Audio('https://www.myinstants.com/media/sounds/discord-notification.mp3');
 
@@ -477,17 +747,39 @@
             return response.status === 204 ? null : await response.json();
         }
 
+        // Intents: GUILDS + GUILD_MEMBERS + GUILD_VOICE_STATES + GUILD_PRESENCES + GUILD_MESSAGES
+        //        + GUILD_MESSAGE_REACTIONS + GUILD_MESSAGE_TYPING + DIRECT_MESSAGES
+        //        + DIRECT_MESSAGE_TYPING + MESSAGE_CONTENT
+        // GUILD_MEMBERS y GUILD_PRESENCES son PRIVILEGIADOS: hay que activarlos a mano
+        // en el Developer Portal (App > Bot > Privileged Gateway Intents).
+        const GATEWAY_INTENTS = 57219;
+
+        function setLoginStatus(text, isError = false) {
+            const el = document.getElementById('login-status');
+            el.innerText = text;
+            el.classList.remove('login-status-error');
+            if (isError) {
+                void el.offsetWidth; // reinicia la animación si se repite el mismo error
+                el.classList.add('login-status-error');
+            }
+        }
+
         function startClient() {
             botToken = document.getElementById('bot-token').value.trim();
             if (!botToken) return;
-            
-            document.getElementById('login-status').innerText = "Conectando...";
+
+            const btn = document.getElementById('connect-btn');
+            btn.disabled = true;
+            btn.innerHTML = `<span class="connecting-spinner"></span> Conectando...`;
+            setLoginStatus("Abriendo conexión con el Gateway...");
+
             ws = new WebSocket(WS_URL);
             
             ws.onopen = () => {
+                setLoginStatus("Identificando bot...");
                 ws.send(JSON.stringify({
                     op: 2,
-                    d: { token: botToken, intents: 33280, properties: { $os: "windows", $browser: "chrome", $device: "pc" } }
+                    d: { token: botToken, intents: GATEWAY_INTENTS, properties: { $os: "windows", $browser: "chrome", $device: "pc" } }
                 }));
             };
 
@@ -503,9 +795,26 @@
                 }
             };
 
-            ws.onclose = () => {
+            ws.onclose = (event) => {
                 clearInterval(heartbeatInterval);
-                document.getElementById('login-status').innerText = "Conexión perdida. Recarga la página.";
+                btn.disabled = false;
+                btn.innerText = "Conectar Gateway";
+
+                const closeReasons = {
+                    4004: "Token inválido. Revisa que copiaste el token del bot correctamente.",
+                    4010: "Sharding inválido.",
+                    4011: "El bot necesita sharding (demasiados servidores).",
+                    4012: "Versión del Gateway inválida.",
+                    4013: "Intents inválidos en la solicitud.",
+                    4014: "Intents privilegiados no aprobados: activa 'Server Members Intent' y 'Presence Intent' en el Developer Portal (App > Bot).",
+                };
+                if (event.code && closeReasons[event.code]) {
+                    setLoginStatus(`Error (${event.code}): ${closeReasons[event.code]}`, true);
+                } else if (botData) {
+                    setLoginStatus("Conexión perdida. Recarga la página para reconectar.", true);
+                } else {
+                    setLoginStatus("No se pudo conectar. Verifica el token e intenta de nuevo.", true);
+                }
             };
         }
 
@@ -518,10 +827,30 @@
                 loadGuilds();
                 loadHome(); 
             }
-            // Mapeo inicial de servidores (para estados de voz)
+            // Mapeo inicial de servidores (voz, presencias, roles, permisos del bot)
             if (type === 'GUILD_CREATE') {
                 guildVoiceStates[data.id] = data.voice_states || [];
+                guildRolesCache[data.id] = data.roles || [];
+
+                // Cachear presencias iniciales que Discord manda dentro del propio GUILD_CREATE
+                guildPresences[data.id] = {};
+                (data.presences || []).forEach(p => { guildPresences[data.id][p.user.id] = p; });
+
+                // Cachear miembros iniciales (si vienen, según intents/tamaño del server)
+                guildMembersCache[data.id] = {};
+                (data.members || []).forEach(m => { if (m.user) guildMembersCache[data.id][m.user.id] = m; });
+
+                // Calcular si el bot tiene permiso Administrator en este servidor,
+                // combinando los roles del bot con los bits de permiso de cada rol.
+                const selfMember = (data.members || []).find(m => m.user && m.user.id === botData.id);
+                botIsAdminInGuild[data.id] = computeIsAdmin(data, selfMember);
+
+                if (activeGuildId === data.id) {
+                    refreshMembersUI(data.id);
+                    updateAdminBadge(data.id);
+                }
             }
+
             // Actualización a tiempo real de estados de voz
             if (type === 'VOICE_STATE_UPDATE') {
                 if (!guildVoiceStates[data.guild_id]) guildVoiceStates[data.guild_id] = [];
@@ -537,6 +866,34 @@
                 }
             }
 
+            // Presencia (online / idle / dnd / offline) en tiempo real
+            if (type === 'PRESENCE_UPDATE') {
+                if (!guildPresences[data.guild_id]) guildPresences[data.guild_id] = {};
+                guildPresences[data.guild_id][data.user.id] = data;
+                if (activeGuildId === data.guild_id) {
+                    refreshMembersUI(data.guild_id);
+                }
+            }
+
+            // Alguien empezó a escribir
+            if (type === 'TYPING_START') {
+                handleTypingStart(data);
+            }
+
+            // Un miembro cambió (nick, roles, timeout) - refrescamos su ficha en caché
+            if (type === 'GUILD_MEMBER_UPDATE') {
+                if (!guildMembersCache[data.guild_id]) guildMembersCache[data.guild_id] = {};
+                guildMembersCache[data.guild_id][data.user.id] = data;
+                if (activeGuildId === data.guild_id) refreshMembersUI(data.guild_id);
+            }
+
+            // Un miembro salió, fue kickeado o baneado -> desaparece de la lista al instante
+            if (type === 'GUILD_MEMBER_REMOVE') {
+                if (guildMembersCache[data.guild_id]) delete guildMembersCache[data.guild_id][data.user.id];
+                if (guildPresences[data.guild_id]) delete guildPresences[data.guild_id][data.user.id];
+                if (activeGuildId === data.guild_id) refreshMembersUI(data.guild_id);
+            }
+
             if (type === 'MESSAGE_CREATE') {
                 // Bug fix: Elimina el mensaje optimista temporal comparando con el nonce 
                 if (data.nonce) {
@@ -550,8 +907,11 @@
                     pingSound.play().catch(()=>{});
                 }
 
+                // Si alguien envía mensaje, ya dejó de estar "escribiendo"
+                clearTypingUser(data.channel_id, data.author.id);
+
                 if (data.channel_id === activeChannelId) {
-                    renderMessage(data);
+                    renderMessage(data, /*flash=*/ data.author.id !== botData.id);
                     scrollToBottom();
                 }
             }
@@ -570,6 +930,81 @@
             }
         }
 
+        // ==========================================
+        //  PERMISOS: ¿EL BOT ES ADMIN EN ESTE SERVIDOR?
+        // ==========================================
+        function computeIsAdmin(guildData, selfMember) {
+            // El dueño del servidor siempre tiene todos los permisos.
+            if (guildData.owner_id && botData && guildData.owner_id === botData.id) return true;
+            if (!selfMember || !selfMember.roles) return false;
+
+            const roles = guildData.roles || [];
+            let permsAccum = 0n;
+            selfMember.roles.forEach(roleId => {
+                const role = roles.find(r => r.id === roleId);
+                if (role && role.permissions) {
+                    try { permsAccum |= BigInt(role.permissions); } catch(e) {}
+                }
+            });
+            return (permsAccum & PERMISSION_ADMINISTRATOR) === PERMISSION_ADMINISTRATOR;
+        }
+
+        function updateAdminBadge(guildId) {
+            const badge = document.getElementById('bot-admin-badge');
+            badge.innerHTML = botIsAdminInGuild[guildId]
+                ? `<span class="mod-badge-admin" title="El bot tiene permisos de Administrador aquí">ADMIN</span>`
+                : '';
+        }
+
+        // ==========================================
+        //  INDICADOR DE ESCRITURA (TYPING_START)
+        // ==========================================
+        function handleTypingStart(data) {
+            if (data.user_id === botData.id) return; // No mostrar nuestro propio "escribiendo"
+            if (!typingUsers[data.channel_id]) typingUsers[data.channel_id] = {};
+
+            const name = data.member?.nick || data.member?.user?.global_name || data.member?.user?.username || 'Alguien';
+
+            if (typingUsers[data.channel_id][data.user_id]) {
+                clearTimeout(typingUsers[data.channel_id][data.user_id].timeoutId);
+            }
+            typingUsers[data.channel_id][data.user_id] = {
+                name,
+                timeoutId: setTimeout(() => clearTypingUser(data.channel_id, data.user_id), 8000)
+            };
+
+            if (data.channel_id === activeChannelId) renderTypingIndicator(data.channel_id);
+        }
+
+        function clearTypingUser(channelId, userId) {
+            if (typingUsers[channelId] && typingUsers[channelId][userId]) {
+                clearTimeout(typingUsers[channelId][userId].timeoutId);
+                delete typingUsers[channelId][userId];
+                if (channelId === activeChannelId) renderTypingIndicator(channelId);
+            }
+        }
+
+        function renderTypingIndicator(channelId) {
+            const indicator = document.getElementById('typing-indicator');
+            const textEl = document.getElementById('typing-text');
+            const users = Object.values(typingUsers[channelId] || {});
+
+            if (users.length === 0) {
+                indicator.classList.remove('active');
+                textEl.innerHTML = '';
+                return;
+            }
+
+            let text;
+            const names = users.map(u => `<b>${escapeHTML(u.name)}</b>`);
+            if (names.length === 1) text = `${names[0]} está escribiendo...`;
+            else if (names.length === 2) text = `${names[0]} y ${names[1]} están escribiendo...`;
+            else text = `${names.slice(0, 2).join(', ')} y ${names.length - 2} más están escribiendo...`;
+
+            textEl.innerHTML = text;
+            indicator.classList.add('active');
+        }
+
         function updateProfileUI() {
             document.getElementById('bot-name').innerText = botData.username;
             document.getElementById('edit-bot-name').value = botData.username;
@@ -581,8 +1016,45 @@
         // ==========================================
         //  MODALES Y PERSONALIZACIÓN (DATA URL)
         // ==========================================
-        function openSettings() { document.getElementById('settings-modal').style.display = 'flex'; }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        function openSettings() {
+            // Refrescamos la vista previa del avatar al abrir, para que muestre el actual
+            if (botData) {
+                const avatarUrl = botData.avatar ? `https://cdn.discordapp.com/avatars/${botData.id}/${botData.avatar}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png';
+                document.getElementById('avatar-preview-img').src = avatarUrl;
+            }
+            openModal('settings-modal');
+        }
+        function openModal(id) { document.getElementById(id).classList.add('visible'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('visible'); }
+
+        function previewAvatarFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => { document.getElementById('avatar-preview-img').src = e.target.result; };
+            reader.readAsDataURL(file);
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerText = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('toast-hide');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        function readFileAsDataURL(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
 
         async function saveSettings() {
             const btn = document.querySelector('#settings-modal .btn-primary');
@@ -603,28 +1075,45 @@
             }));
 
             const newName = document.getElementById('edit-bot-name').value.trim();
-            const fileInput = document.getElementById('edit-bot-avatar').files[0];
-            
+            const avatarFile = document.getElementById('edit-bot-avatar').files[0];
+            const bannerFile = document.getElementById('edit-bot-banner').files[0];
+
             let patchData = {};
             if (newName && newName !== botData.username) patchData.username = newName;
 
             try {
-                if (fileInput) {
-                    const reader = new FileReader();
-                    reader.onload = async (e) => {
-                        patchData.avatar = e.target.result;
-                        await updateBotProfileAPI(patchData);
-                        finalizeSettingsSave(btn);
-                    };
-                    reader.readAsDataURL(fileInput);
-                } else if (Object.keys(patchData).length > 0) {
-                    await updateBotProfileAPI(patchData);
-                    finalizeSettingsSave(btn);
-                } else {
-                    finalizeSettingsSave(btn);
+                if (avatarFile) patchData.avatar = await readFileAsDataURL(avatarFile);
+
+                // El banner se intenta aparte: no todos los bots tienen permiso (Nitro-equivalente)
+                // para cambiarlo, así que un fallo aquí no debe cancelar el resto de los cambios.
+                let bannerFailed = false;
+                if (bannerFile) {
+                    try {
+                        const bannerDataUrl = await readFileAsDataURL(bannerFile);
+                        await apiRequest('/users/@me', { method: 'PATCH', body: { banner: bannerDataUrl } });
+                    } catch (bannerErr) {
+                        bannerFailed = true;
+                    }
                 }
+
+                if (Object.keys(patchData).length > 0) {
+                    await updateBotProfileAPI(patchData);
+                } else if (bannerFile && !bannerFailed) {
+                    // Solo cambió el banner: igual refrescamos los datos del bot para reflejarlo.
+                    const refreshed = await apiRequest('/users/@me');
+                    botData = refreshed;
+                    updateProfileUI();
+                }
+
+                if (bannerFailed) {
+                    showToast("Perfil actualizado, pero el banner no se pudo cambiar (puede requerir Nitro).", "error");
+                }
+
+                document.getElementById('edit-bot-avatar').value = '';
+                document.getElementById('edit-bot-banner').value = '';
+                finalizeSettingsSave(btn);
             } catch (error) {
-                alert("Error al actualizar: " + error.message);
+                showToast("Error al actualizar: " + error.message, "error");
                 finalizeSettingsSave(btn, true);
             }
         }
@@ -713,27 +1202,19 @@
             // Mostrar Panel Izquierdo
             document.getElementById('sidebar-right').style.display = 'flex';
             document.getElementById('members-list').innerHTML = '<div style="padding:10px;color:var(--text-muted);text-align:center;">Cargando...</div>';
+            updateAdminBadge(guildId);
             
             resetChatArea();
 
-            // Cargar Miembros
+            // Cargar Miembros (combina caché del gateway con la API REST como respaldo)
             try {
-                const members = await apiRequest(`/guilds/${guildId}/members?limit=100`);
-                const mList = document.getElementById('members-list');
-                mList.innerHTML = '';
-                members.forEach(m => {
-                    const div = document.createElement('div');
-                    div.className = 'member-item';
-                    const avatar = m.user.avatar ? `https://cdn.discordapp.com/avatars/${m.user.id}/${m.user.avatar}.png` : `https://cdn.discordapp.com/embed/avatars/0.png`;
-                    const name = m.nick || m.user.global_name || m.user.username;
-                    div.innerHTML = `<img src="${avatar}"> <span>${escapeHTML(name)}</span>`;
-                    mList.appendChild(div);
-                });
+                await ensureMembersLoaded(guildId);
+                refreshMembersUI(guildId);
             } catch(err) {
-                document.getElementById('members-list').innerHTML = '<div style="padding:10px;color:var(--danger);text-align:center; font-size:12px;">Error al cargar miembros.<br>Activa los intents en el portal.</div>';
+                document.getElementById('members-list').innerHTML = '<div style="padding:10px;color:var(--danger);text-align:center; font-size:12px;">Error al cargar miembros.<br>Activa "Server Members Intent" en el portal.</div>';
             }
 
-            // Cargar Canales y Hilos
+            // Cargar Canales, Categorías e Hilos
             try {
                 currentGuildChannels = await apiRequest(`/guilds/${guildId}/channels`);
                 try {
@@ -752,21 +1233,158 @@
                 currentGuildEmojis = [];
             }
         }
-        
+
+        // Garantiza que tengamos datos de miembros para el servidor, usando REST
+        // si la caché del gateway (guildMembersCache) todavía está vacía.
+        async function ensureMembersLoaded(guildId) {
+            const cached = guildMembersCache[guildId];
+            if (cached && Object.keys(cached).length > 0) return;
+
+            const members = await apiRequest(`/guilds/${guildId}/members?limit=100`);
+            if (!guildMembersCache[guildId]) guildMembersCache[guildId] = {};
+            members.forEach(m => { if (m.user) guildMembersCache[guildId][m.user.id] = m; });
+        }
+
+        // ==========================================
+        //  PANEL DE MIEMBROS: presencia + orden online/offline + moderación
+        // ==========================================
+        function refreshMembersUI(guildId) {
+            const mList = document.getElementById('members-list');
+            const members = Object.values(guildMembersCache[guildId] || {});
+            const presences = guildPresences[guildId] || {};
+
+            if (members.length === 0) {
+                mList.innerHTML = '<div style="padding:10px;color:var(--text-muted);text-align:center; font-size:12px;">No hay datos de miembros todavía.</div>';
+                return;
+            }
+
+            const withStatus = members.map(m => {
+                const presence = presences[m.user.id];
+                const status = presence ? presence.status : 'offline'; // sin presencia cacheada = asumimos offline/desconocido
+                return { member: m, status };
+            });
+
+            const online = withStatus.filter(x => x.status !== 'offline').sort(sortByDisplayName);
+            const offline = withStatus.filter(x => x.status === 'offline').sort(sortByDisplayName);
+
+            mList.innerHTML = '';
+
+            if (online.length > 0) {
+                const label = document.createElement('div');
+                label.className = 'member-section-label';
+                label.innerText = `En línea — ${online.length}`;
+                mList.appendChild(label);
+                online.forEach(x => mList.appendChild(buildMemberRow(guildId, x.member, x.status)));
+            }
+
+            if (offline.length > 0) {
+                const label = document.createElement('div');
+                label.className = 'member-section-label';
+                label.innerText = `Desconectados — ${offline.length}`;
+                mList.appendChild(label);
+                offline.forEach(x => mList.appendChild(buildMemberRow(guildId, x.member, x.status)));
+            }
+        }
+
+        function sortByDisplayName(a, b) {
+            const nameA = (a.member.nick || a.member.user.global_name || a.member.user.username || '').toLowerCase();
+            const nameB = (b.member.nick || b.member.user.global_name || b.member.user.username || '').toLowerCase();
+            return nameA.localeCompare(nameB);
+        }
+
+        function buildMemberRow(guildId, member, status) {
+            const div = document.createElement('div');
+            div.className = 'member-item' + (status === 'offline' ? ' offline-member' : '');
+
+            const avatar = member.user.avatar
+                ? `https://cdn.discordapp.com/avatars/${member.user.id}/${member.user.avatar}.png`
+                : `https://cdn.discordapp.com/embed/avatars/0.png`;
+            const name = member.nick || member.user.global_name || member.user.username;
+            const isBot = member.user.bot;
+
+            div.innerHTML = `
+                <div class="member-avatar-wrap">
+                    <img src="${avatar}" alt="${escapeHTML(name)}">
+                    <div class="presence-dot status-${status}"></div>
+                </div>
+                <div class="member-item-info">
+                    <span class="member-item-name">${escapeHTML(name)}</span>
+                </div>
+                ${isBot ? '<span style="background:var(--brand);color:white;font-size:9px;padding:1px 4px;border-radius:3px;">BOT</span>' : ''}
+            `;
+
+            // El botón/menú de moderación solo se agrega si el bot tiene Administrator aquí,
+            // y nunca sobre sí mismo ni sobre otro bot.
+            if (botIsAdminInGuild[guildId] && member.user.id !== botData.id) {
+                const trigger = document.createElement('button');
+                trigger.className = 'member-mod-trigger';
+                trigger.title = 'Opciones de moderación';
+                trigger.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>`;
+                trigger.onclick = (e) => { e.stopPropagation(); openModMenu(e.currentTarget, guildId, member); };
+                div.appendChild(trigger);
+            }
+
+            return div;
+        }
+
         function refreshChannelsUI(guildId) {
             const cList = document.getElementById('channels-list');
             cList.innerHTML = '';
-            
-            // Renderizar Canales de Texto (0) y Noticias (5) + Hilos
-            currentGuildChannels.filter(c => c.type === 0 || c.type === 5).forEach(channel => {
+
+            // 1) Agrupar canales por categoría (type 4), tal como en un servidor real:
+            //    primero los canales sueltos sin categoría, luego cada categoría con los suyos.
+            const categories = currentGuildChannels
+                .filter(c => c.type === 4)
+                .sort((a, b) => (a.position || 0) - (b.position || 0));
+
+            const renderableTypes = [0, 2, 5]; // texto, voz, anuncios
+            const topLevelChannels = currentGuildChannels
+                .filter(c => renderableTypes.includes(c.type) && !c.parent_id)
+                .sort((a, b) => (a.position || 0) - (b.position || 0));
+
+            if (topLevelChannels.length > 0) {
+                const wrap = document.createElement('div');
+                wrap.className = 'no-category-channels';
+                topLevelChannels.forEach(channel => renderChannelOrVoice(channel, guildId, wrap));
+                cList.appendChild(wrap);
+            }
+
+            categories.forEach(cat => {
+                const catChannels = currentGuildChannels
+                    .filter(c => renderableTypes.includes(c.type) && c.parent_id === cat.id)
+                    .sort((a, b) => (a.position || 0) - (b.position || 0));
+
+                const catDiv = document.createElement('div');
+                catDiv.className = 'channel-category';
+                catDiv.id = `category-${cat.id}`;
+
+                const header = document.createElement('div');
+                header.className = 'channel-category-header';
+                header.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg> ${escapeHTML(cat.name)}`;
+                header.onclick = () => catDiv.classList.toggle('collapsed');
+                catDiv.appendChild(header);
+
+                const channelsWrap = document.createElement('div');
+                channelsWrap.className = 'category-channels';
+                catChannels.forEach(channel => renderChannelOrVoice(channel, guildId, channelsWrap));
+                catDiv.appendChild(channelsWrap);
+
+                cList.appendChild(catDiv);
+            });
+        }
+
+        // Renderiza un solo canal (texto/anuncios con hilos, o voz con su gente dentro)
+        // y lo añade al contenedor dado.
+        function renderChannelOrVoice(channel, guildId, container) {
+            if (channel.type === 0 || channel.type === 5) {
                 const div = document.createElement('div');
                 div.className = 'channel-item';
                 div.id = `channel-${channel.id}`;
                 div.innerHTML = `${HASHTAG_SVG} ${escapeHTML(channel.name)}`;
                 div.onclick = () => openChannel(channel.id, channel.name, false);
-                cList.appendChild(div);
+                container.appendChild(div);
 
-                // Encontrar e imprimir hilos bajo este canal
+                // Hilos activos bajo este canal
                 const threads = currentGuildThreads.filter(t => t.parent_id === channel.id);
                 threads.forEach(th => {
                     const thDiv = document.createElement('div');
@@ -775,19 +1393,15 @@
                     thDiv.id = `channel-${th.id}`;
                     thDiv.innerHTML = `${THREAD_SVG} ${escapeHTML(th.name)}`;
                     thDiv.onclick = () => openChannel(th.id, th.name, false);
-                    cList.appendChild(thDiv);
+                    container.appendChild(thDiv);
                 });
-            });
-
-            // Renderizar Canales de Voz (2) y ver gente en su interior
-            currentGuildChannels.filter(c => c.type === 2).forEach(channel => {
+            } else if (channel.type === 2) {
                 const div = document.createElement('div');
                 div.className = 'channel-item';
                 div.style.cursor = 'default'; // Solo visualizar el canal de voz
                 div.innerHTML = `${SPEAKER_SVG} ${escapeHTML(channel.name)}`;
-                cList.appendChild(div);
+                container.appendChild(div);
 
-                // Agregar Usuarios en Voz
                 const vStates = (guildVoiceStates[guildId] || []).filter(vs => vs.channel_id === channel.id);
                 vStates.forEach(vs => {
                     const uDiv = document.createElement('div');
@@ -797,9 +1411,149 @@
                         ? `https://cdn.discordapp.com/avatars/${vs.user_id}/${vs.member.user.avatar}.png` 
                         : `https://cdn.discordapp.com/embed/avatars/0.png`;
                     uDiv.innerHTML = `<img src="${avatar}" style="width:20px;height:20px;border-radius:50%;"> <span>${escapeHTML(name)}</span>`;
-                    cList.appendChild(uDiv);
+                    container.appendChild(uDiv);
                 });
-            });
+            }
+        }
+
+        // ==========================================
+        //  MODERACIÓN: BANEAR / EXPULSAR / TIMEOUT / ROLES
+        //  (el botón que abre este menú solo se pinta si botIsAdminInGuild[guildId] es true)
+        // ==========================================
+        function openModMenu(triggerEl, guildId, member) {
+            modMenuTargetGuildId = guildId;
+            modMenuTargetUserId = member.user.id;
+
+            const name = member.nick || member.user.global_name || member.user.username;
+            const roles = guildRolesCache[guildId] || [];
+            const memberRoleIds = member.roles || [];
+            const isTimedOut = member.communication_disabled_until && new Date(member.communication_disabled_until) > new Date();
+
+            const rolesHtml = roles
+                .filter(r => r.name !== '@everyone')
+                .sort((a, b) => (b.position || 0) - (a.position || 0))
+                .map(r => {
+                    const has = memberRoleIds.includes(r.id);
+                    const colorHex = r.color ? `#${r.color.toString(16).padStart(6, '0')}` : 'var(--text-normal)';
+                    return `<div class="mod-menu-item mod-menu-role-item ${has ? 'has-role' : ''}" onclick="toggleMemberRole('${r.id}', ${has})">
+                        <span style="color:${colorHex}">${escapeHTML(r.name)}</span>
+                        <span class="role-check">✓</span>
+                    </div>`;
+                }).join('') || '<div style="padding:8px 10px; font-size:12px; color:var(--text-muted);">Sin roles asignables</div>';
+
+            const menu = document.getElementById('mod-menu');
+            menu.innerHTML = `
+                <div class="mod-menu-header">${escapeHTML(name)}</div>
+                <div class="mod-menu-item" onclick="promptTimeoutMember(${isTimedOut})">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm.5 5H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+                    ${isTimedOut ? 'Quitar aislamiento' : 'Aislar (Timeout)'}
+                </div>
+                <div class="mod-menu-item danger" onclick="confirmKickMember()">
+                    <svg viewBox="0 0 24 24"><path d="M11 7L9.6 8.4l2.6 2.6H2v2h10.2l-2.6 2.6L11 17l5-5-5-5zm9 12h-8v2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-8v2h8v14z"/></svg>
+                    Expulsar del servidor
+                </div>
+                <div class="mod-menu-item danger" onclick="confirmBanMember()">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"/></svg>
+                    Banear
+                </div>
+                <div class="mod-menu-header" style="margin-top:4px;">Asignar rol</div>
+                <div class="mod-menu-roles">${rolesHtml}</div>
+            `;
+
+            const rect = triggerEl.getBoundingClientRect();
+            menu.style.top = `${rect.bottom + 4}px`;
+            menu.style.left = `${Math.max(8, rect.right - 220)}px`;
+            menu.classList.add('visible');
+
+            // Cerrar al hacer click afuera (con un pequeño delay para no cerrarse por el mismo click que lo abrió)
+            setTimeout(() => document.addEventListener('click', closeModMenuOnClickOutside), 0);
+        }
+
+        function closeModMenuOnClickOutside(e) {
+            const menu = document.getElementById('mod-menu');
+            if (!menu.contains(e.target)) {
+                menu.classList.remove('visible');
+                document.removeEventListener('click', closeModMenuOnClickOutside);
+            }
+        }
+
+        function closeModMenu() {
+            document.getElementById('mod-menu').classList.remove('visible');
+            document.removeEventListener('click', closeModMenuOnClickOutside);
+        }
+
+        async function confirmKickMember() {
+            if (!confirm("¿Seguro que quieres expulsar a este miembro? Podrá volver a unirse con una invitación nueva.")) return;
+            closeModMenu();
+            try {
+                await apiRequest(`/guilds/${modMenuTargetGuildId}/members/${modMenuTargetUserId}`, { method: 'DELETE' });
+                showToast("Miembro expulsado.", "success");
+                // GUILD_MEMBER_REMOVE del gateway ya actualizará la lista; forzamos por si acaso.
+                if (guildMembersCache[modMenuTargetGuildId]) delete guildMembersCache[modMenuTargetGuildId][modMenuTargetUserId];
+                refreshMembersUI(modMenuTargetGuildId);
+            } catch (err) {
+                showToast("No se pudo expulsar. Revisa que el rol del bot esté por encima del suyo.", "error");
+            }
+        }
+
+        async function confirmBanMember() {
+            if (!confirm("¿Seguro que quieres BANEAR a este miembro? Esta acción es más difícil de revertir que expulsar.")) return;
+            closeModMenu();
+            try {
+                await apiRequest(`/guilds/${modMenuTargetGuildId}/bans/${modMenuTargetUserId}`, { method: 'PUT', body: { delete_message_seconds: 0 } });
+                showToast("Miembro baneado.", "success");
+                if (guildMembersCache[modMenuTargetGuildId]) delete guildMembersCache[modMenuTargetGuildId][modMenuTargetUserId];
+                refreshMembersUI(modMenuTargetGuildId);
+            } catch (err) {
+                showToast("No se pudo banear. Revisa que el rol del bot esté por encima del suyo.", "error");
+            }
+        }
+
+        async function promptTimeoutMember(isCurrentlyTimedOut) {
+            if (isCurrentlyTimedOut) {
+                closeModMenu();
+                try {
+                    await apiRequest(`/guilds/${modMenuTargetGuildId}/members/${modMenuTargetUserId}`, { method: 'PATCH', body: { communication_disabled_until: null } });
+                    showToast("Aislamiento removido.", "success");
+                } catch (err) {
+                    showToast("No se pudo quitar el aislamiento.", "error");
+                }
+                return;
+            }
+
+            const minutesStr = prompt("¿Por cuántos minutos quieres aislar a este miembro? (máx. 40320 = 28 días)", "10");
+            if (!minutesStr) return;
+            const minutes = parseInt(minutesStr, 10);
+            if (isNaN(minutes) || minutes <= 0) { showToast("Cantidad de minutos inválida.", "error"); return; }
+
+            closeModMenu();
+            const until = new Date(Date.now() + minutes * 60000).toISOString();
+            try {
+                await apiRequest(`/guilds/${modMenuTargetGuildId}/members/${modMenuTargetUserId}`, { method: 'PATCH', body: { communication_disabled_until: until } });
+                showToast(`Miembro aislado por ${minutes} minuto(s).`, "success");
+            } catch (err) {
+                showToast("No se pudo aislar. Revisa que el rol del bot esté por encima del suyo.", "error");
+            }
+        }
+
+        async function toggleMemberRole(roleId, hasRole) {
+            const guildId = modMenuTargetGuildId, userId = modMenuTargetUserId;
+            closeModMenu();
+            try {
+                await apiRequest(
+                    `/guilds/${guildId}/members/${userId}/roles/${roleId}`,
+                    { method: hasRole ? 'DELETE' : 'PUT' }
+                );
+                showToast(hasRole ? "Rol removido." : "Rol asignado.", "success");
+                // Actualizamos la caché local al instante; GUILD_MEMBER_UPDATE la confirmará después.
+                const cachedMember = guildMembersCache[guildId]?.[userId];
+                if (cachedMember) {
+                    if (hasRole) cachedMember.roles = (cachedMember.roles || []).filter(r => r !== roleId);
+                    else cachedMember.roles = [...(cachedMember.roles || []), roleId];
+                }
+            } catch (err) {
+                showToast("No se pudo modificar el rol. Revisa la jerarquía de roles del bot.", "error");
+            }
         }
 
         function resetChatArea() {
@@ -810,6 +1564,7 @@
             document.getElementById('chat-input').placeholder = "Selecciona un canal para escribir";
             document.getElementById('btn-embed').classList.add('disabled');
             document.getElementById('btn-emoji').classList.add('disabled');
+            document.getElementById('typing-indicator').classList.remove('active');
         }
 
         // ==========================================
@@ -848,7 +1603,7 @@
         async function openChannel(channelId, channelName, isDM = false, silent = false) {
             activeChannelId = channelId;
             currentChannelName = channelName;
-            
+
             if(!silent) {
                 document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
                 const el = document.getElementById(`channel-${channelId}`);
@@ -857,8 +1612,9 @@
                 document.getElementById('chat-title').innerHTML = isDM 
                     ? `<svg viewBox="0 0 24 24"><path d="M12 2C6.486 2 2 6.486 2 12C2 17.514 6.486 22 12 22C17.514 22 22 17.514 22 12C22 6.486 17.514 2 12 2ZM12 7.25C13.518 7.25 14.75 8.481 14.75 10C14.75 11.518 13.518 12.75 12 12.75C10.481 12.75 9.25 11.518 9.25 10C9.25 8.481 10.481 7.25 12 7.25ZM12 18.25C9.75 18.25 7.822 17.159 6.574 15.485C6.98 14.248 9.213 13.5 12 13.5C14.787 13.5 17.02 14.248 17.426 15.485C16.178 17.159 14.25 18.25 12 18.25Z"/></svg> ${escapeHTML(channelName)}`
                     : `${HASHTAG_SVG} ${escapeHTML(channelName)}`;
-                
+
                 document.getElementById('messages').innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Cargando mensajes...</div>';
+                renderTypingIndicator(channelId); // Restaura si ya había alguien escribiendo aquí
             }
 
             try {
@@ -910,7 +1666,7 @@
                 div.onclick = () => selectEmoji(em);
                 grid.appendChild(div);
             });
-            document.getElementById('emoji-modal').style.display = 'flex';
+            openModal('emoji-modal');
         }
 
         function selectEmoji(em) {
@@ -939,7 +1695,7 @@
             });
         }
 
-        function renderMessage(msg) {
+        function renderMessage(msg, flash = false) {
             if (document.getElementById('msg-' + msg.id)) return;
             const container = document.getElementById('messages');
             
@@ -947,6 +1703,7 @@
             div.className = 'message';
             div.id = `msg-${msg.id}`;
             if (msg.temp) div.style.opacity = '0.5';
+            if (flash) div.classList.add('new-message-flash');
 
             const authorUrl = msg.author.avatar ? `https://cdn.discordapp.com/avatars/${msg.author.id}/${msg.author.avatar}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png';
             const date = new Date(msg.timestamp).toLocaleString();
