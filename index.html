@@ -2125,7 +2125,8 @@
             const key = msg.userId || 'mix';
             const now = voiceCtx.currentTime;
             let t = voicePlayhead[key] || 0;
-            if (t < now + 0.01) t = now + 0.12; // pequeño colchón contra el jitter
+            if (t < now + 0.01) t = now + 0.15; // colchón contra el jitter de red
+            if (t > now + 1.2) return; // demasiado retraso acumulado: descarta este trozo
             node.start(t);
             voicePlayhead[key] = t + buffer.duration;
         }
@@ -2173,7 +2174,7 @@
             mic.src = mic.ctx.createMediaStreamSource(mic.stream);
             mic.proc = mic.ctx.createScriptProcessor(2048, 1, 1); // ~43 ms por bloque
             const ratio = mic.ctx.sampleRate / 48000;
-            mic.hang = 0;
+            mic.hang = 0; mic.pre = [];
             mic.proc.onaudioprocess = (e) => {
                 if (!mic.on) return;
                 const input = e.inputBuffer.getChannelData(0);
@@ -2191,9 +2192,15 @@
                 // Puerta de ruido con "cola": sigue enviando ~0.4 s tras la última voz
                 let sum = 0, cnt = 0;
                 for (let i = 0; i < out.length; i += 4) { sum += out[i] * out[i]; cnt++; }
-                if (Math.sqrt(sum / cnt) > 0.006) mic.hang = 10;
-                else if (mic.hang > 0) mic.hang--;
-                else return;
+                const loud = Math.sqrt(sum / cnt) > 0.0025;
+                if (loud) {
+                    if (mic.hang === 0) { // se abre la puerta: manda también los últimos bloques (inicio de la frase)
+                        mic.pre.forEach(sendMicChunk);
+                        mic.pre = [];
+                    }
+                    mic.hang = 14;
+                } else if (mic.hang > 0) mic.hang--;
+                else { mic.pre.push(out); if (mic.pre.length > 3) mic.pre.shift(); return; }
                 sendMicChunk(out);
             };
             const mute = mic.ctx.createGain(); mute.gain.value = 0; // el procesador necesita salida, pero sin eco
