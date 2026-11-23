@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -504,6 +504,30 @@
             text-align: left; line-height: 1.5;
         }
         .intents-warning a { color: #f1c40f; }
+
+        /* ===== VOZ ===== */
+        #voice-panel { display:none; padding:8px 10px; background:var(--bg-tertiary); border-top:1px solid var(--divider); flex-shrink:0; }
+        #voice-panel.visible { display:block; }
+        .vp-top { display:flex; align-items:center; gap:8px; }
+        .vp-dot { width:10px; height:10px; border-radius:50%; background:var(--success); box-shadow:0 0 0 0 rgba(35,165,89,.6); animation:vpPulse 1.8s infinite; flex-shrink:0; }
+        @keyframes vpPulse { 0%{box-shadow:0 0 0 0 rgba(35,165,89,.6);} 70%{box-shadow:0 0 0 7px rgba(35,165,89,0);} 100%{box-shadow:0 0 0 0 rgba(35,165,89,0);} }
+        .vp-info { flex:1; min-width:0; }
+        .vp-title { font-size:13px; font-weight:700; color:var(--success); }
+        .vp-sub { font-size:12px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .vp-controls { display:flex; align-items:center; gap:6px; margin-top:8px; }
+        .vp-btn { background:var(--bg-secondary); border:none; color:var(--interactive-normal); width:32px; height:32px; border-radius:6px; cursor:pointer; font-size:15px; display:flex; align-items:center; justify-content:center; transition:background .15s, color .15s; flex-shrink:0; }
+        .vp-btn:hover { background:var(--bg-message-hover); color:var(--interactive-hover); }
+        .vp-btn.on { background:var(--success); color:#fff; }
+        .vp-btn.off { background:rgba(218,55,60,.2); color:var(--danger); }
+        .vp-btn.danger:hover { background:var(--danger); color:#fff; }
+        #vp-vol { flex:1; min-width:0; accent-color:var(--brand); height:4px; }
+        #vp-live { margin-top:6px; display:flex; flex-direction:column; gap:3px; }
+        .vp-live-item { font-size:12px; color:var(--text-normal); display:flex; align-items:center; gap:6px; }
+        .voice-user .vbadge { margin-left:auto; font-size:10px; font-weight:700; padding:1px 5px; border-radius:4px; background:var(--bg-tertiary); color:var(--text-muted); flex-shrink:0; }
+        .voice-user .vbadge.live { background:var(--danger); color:#fff; cursor:pointer; letter-spacing:.3px; }
+        .voice-user img { transition: box-shadow .12s ease; }
+        .voice-user.speaking img { box-shadow:0 0 0 2px var(--success); }
+        .voice-user.speaking span:first-of-type { color:var(--interactive-active); }
     </style>
 </head>
 <body>
@@ -612,6 +636,23 @@
                     <button class="add-dm-btn" onclick="promptAddDM()" title="Agregar por ID de Usuario">+</button>
                 </div>
                 <div id="dm-items"></div>
+            </div>
+
+            <div id="voice-panel">
+                <div class="vp-top">
+                    <div class="vp-dot"></div>
+                    <div class="vp-info">
+                        <div class="vp-title">Voz conectada</div>
+                        <div class="vp-sub" id="vp-channel">—</div>
+                    </div>
+                    <button class="vp-btn danger" onclick="leaveVoice()" title="Salir de la llamada">&#128222;</button>
+                </div>
+                <div class="vp-controls">
+                    <button class="vp-btn off" id="vp-mic" onclick="toggleMic()" title="Activar micrófono">&#127908;</button>
+                    <button class="vp-btn" id="vp-deaf" onclick="toggleDeafen()" title="Ensordecer / escuchar">&#127911;</button>
+                    <input type="range" id="vp-vol" min="0" max="200" value="100" oninput="setVoiceVolume(this.value)" title="Volumen">
+                </div>
+                <div id="vp-live"></div>
             </div>
 
             <div id="bot-profile">
@@ -865,6 +906,8 @@
                     refreshChannelsUI(data.guild_id);
                 }
             }
+
+            if (type === 'VOICE_STATE_UPDATE') onVoiceStateUpdate(data);
 
             // Presencia (online / idle / dnd / offline) en tiempo real
             if (type === 'PRESENCE_UPDATE') {
@@ -1398,8 +1441,11 @@
             } else if (channel.type === 2) {
                 const div = document.createElement('div');
                 div.className = 'channel-item';
-                div.style.cursor = 'default'; // Solo visualizar el canal de voz
+                div.style.cursor = 'pointer';
+                div.title = 'Click para unirte a la llamada';
+                if (voice.connected && voice.channelId === channel.id) div.classList.add('active');
                 div.innerHTML = `${SPEAKER_SVG} ${escapeHTML(channel.name)}`;
+                div.onclick = () => joinVoiceChannel(guildId, channel.id, channel.name);
                 container.appendChild(div);
 
                 const vStates = (guildVoiceStates[guildId] || []).filter(vs => vs.channel_id === channel.id);
@@ -1410,7 +1456,9 @@
                     const avatar = vs.member?.user?.avatar 
                         ? `https://cdn.discordapp.com/avatars/${vs.user_id}/${vs.member.user.avatar}.png` 
                         : `https://cdn.discordapp.com/embed/avatars/0.png`;
-                    uDiv.innerHTML = `<img src="${avatar}" style="width:20px;height:20px;border-radius:50%;"> <span>${escapeHTML(name)}</span>`;
+                    uDiv.dataset.uid = vs.user_id;
+                    if (speakingUsers.has(vs.user_id)) uDiv.classList.add('speaking');
+                    uDiv.innerHTML = `<img src="${avatar}" style="width:20px;height:20px;border-radius:50%;"> <span>${escapeHTML(name)}</span>${voiceBadges(vs)}`;
                     container.appendChild(uDiv);
                 });
             }
@@ -1931,6 +1979,288 @@
             }
         }, 1000);
 
+
+        // ==========================================
+        //  VOZ DE DISCORD (servidor en Wispbyte)
+        //  Entrar a llamadas, escuchar, hablar con el micrófono
+        //  y ver quién transmite / tiene cámara.
+        //  Nota: Discord NO envía video a los bots, así que las
+        //  transmisiones solo se pueden detectar (EN VIVO), no ver.
+        // ==========================================
+        const VOICE_API = 'https://soyunbotvoice.wisp.uno';
+        const voice = { connected: false, joining: false, guildId: null, channelId: null, channelName: '', ws: null, deafened: false, retries: 0 };
+        const speakingUsers = new Set();
+        const speakingTimers = {};
+        const voicePlayhead = {};
+        let voiceCtx = null, voiceGain = null, voiceVolume = 1;
+
+        // ----- Micrófono -----
+        const mic = { on: false, stream: null, ctx: null, proc: null, src: null, buf: [], held: 0, queue: [], sending: false };
+        const MIC_CHUNK = 48000 * 0.32; // ~320 ms por envío
+
+        function voiceBadges(vs) {
+            let h = '';
+            if (vs.self_stream) h += `<span class="vbadge live" title="Está transmitiendo (Go Live)" onclick="event.stopPropagation(); showStreamInfo()">EN VIVO</span>`;
+            if (vs.self_video) h += `<span class="vbadge" title="Cámara encendida">&#128247;</span>`;
+            if (vs.self_deaf || vs.deaf) h += `<span class="vbadge" title="Ensordecido">&#128263;</span>`;
+            else if (vs.self_mute || vs.mute) h += `<span class="vbadge" title="Silenciado">&#128263;</span>`;
+            return h;
+        }
+
+        function showStreamInfo() {
+            showToast('Discord no envía el video de las transmisiones a los bots, así que solo puedo avisarte quién está en vivo. El audio sí lo escuchas.', 'info');
+        }
+
+        async function voicePost(path, body) {
+            const res = await fetch(VOICE_API + path, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(Object.assign({ token: botToken }, body))
+            });
+            let data = {};
+            try { data = await res.json(); } catch (e) {}
+            if (!res.ok || data.ok === false) throw new Error(data.error || `Error ${res.status} del servidor de voz`);
+            return data;
+        }
+
+        function ensureVoiceAudio() {
+            if (!voiceCtx) {
+                const AC = window.AudioContext || window.webkitAudioContext;
+                try { voiceCtx = new AC({ sampleRate: 48000 }); } catch (e) { voiceCtx = new AC(); }
+                voiceGain = voiceCtx.createGain();
+                voiceGain.gain.value = voiceVolume;
+                voiceGain.connect(voiceCtx.destination);
+            }
+            if (voiceCtx.state === 'suspended') voiceCtx.resume();
+        }
+
+        async function joinVoiceChannel(guildId, channelId, channelName) {
+            if (voice.joining) return;
+            if (voice.connected && voice.channelId === channelId) { showToast('Ya estás en esa llamada.', 'info'); return; }
+            voice.joining = true;
+            ensureVoiceAudio(); // se crea aquí por el gesto del usuario (autoplay)
+            try {
+                if (voice.connected) await leaveVoice(true);
+                showToast(`Entrando a "${channelName}"...`, 'info');
+                await voicePost('/api/join', { guildId, channelId });
+                voice.connected = true;
+                voice.guildId = guildId;
+                voice.channelId = channelId;
+                voice.channelName = channelName;
+                voice.retries = 0;
+                openVoiceSocket();
+                renderVoicePanel();
+                if (activeGuildId === guildId) refreshChannelsUI(guildId);
+                showToast(`Conectado a "${channelName}"`, 'success');
+            } catch (err) {
+                showToast('No se pudo entrar: ' + err.message, 'error');
+            } finally {
+                voice.joining = false;
+            }
+        }
+
+        async function leaveVoice(silent = false) {
+            const gid = voice.guildId;
+            stopMic();
+            const wasConnected = voice.connected;
+            voice.connected = false;
+            if (voice.ws) { try { voice.ws.onclose = null; voice.ws.close(); } catch (e) {} voice.ws = null; }
+            if (wasConnected && gid) { try { await voicePost('/api/leave', { guildId: gid }); } catch (e) {} }
+            voice.guildId = null; voice.channelId = null; voice.channelName = '';
+            Object.keys(voicePlayhead).forEach(k => delete voicePlayhead[k]);
+            speakingUsers.clear();
+            renderVoicePanel();
+            if (activeGuildId && !isDMView) refreshChannelsUI(activeGuildId);
+            if (!silent && wasConnected) showToast('Saliste de la llamada.', 'info');
+        }
+
+        // ----- Escuchar (WebSocket) -----
+        function openVoiceSocket() {
+            if (voice.ws) { try { voice.ws.onclose = null; voice.ws.close(); } catch (e) {} }
+            const url = VOICE_API.replace(/^http/i, 'ws') + `/?token=${encodeURIComponent(botToken)}`;
+            const sock = new WebSocket(url);
+            voice.ws = sock;
+            sock.onmessage = (ev) => {
+                let msg; try { msg = JSON.parse(ev.data); } catch (e) { return; }
+                if (msg.event === 'speaking_start') setSpeaking(msg.userId, true);
+                else if (msg.event === 'speaking_end') setSpeaking(msg.userId, false);
+                else if (msg.event === 'stream_start') showToast(`${msg.username || 'Alguien'} empezó a transmitir`, 'info');
+                else if (msg.event === 'camera_on') showToast(`${msg.username || 'Alguien'} encendió la cámara`, 'info');
+                else if (msg.event === 'user_audio_pcm' && msg.pcmBase64) {
+                    if (msg.userId) markSpeakingBrief(msg.userId);
+                    playVoicePcm(msg);
+                }
+            };
+            sock.onerror = () => {};
+            sock.onclose = () => {
+                if (!voice.connected) return;
+                if (voice.retries < 5) {
+                    voice.retries++;
+                    setTimeout(() => { if (voice.connected) openVoiceSocket(); }, 1500 * voice.retries);
+                } else {
+                    showToast('Se perdió la conexión de audio con el servidor de voz.', 'error');
+                }
+            };
+        }
+
+        function playVoicePcm(msg) {
+            if (voice.deafened || !voiceCtx) return;
+            const channels = msg.channels || 2;
+            const rate = msg.sampleRate || 48000;
+            const bin = atob(msg.pcmBase64);
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            const i16 = new Int16Array(bytes.buffer, 0, Math.floor(bytes.length / 2));
+            const frames = Math.floor(i16.length / channels);
+            if (frames <= 0) return;
+            const buffer = voiceCtx.createBuffer(channels, frames, rate);
+            for (let ch = 0; ch < channels; ch++) {
+                const d = buffer.getChannelData(ch);
+                for (let i = 0; i < frames; i++) d[i] = i16[i * channels + ch] / 32768;
+            }
+            const node = voiceCtx.createBufferSource();
+            node.buffer = buffer;
+            node.connect(voiceGain);
+            // Cola por usuario para que el audio suene continuo sin cortes
+            const key = msg.userId || 'mix';
+            const now = voiceCtx.currentTime;
+            let t = voicePlayhead[key] || 0;
+            if (t < now + 0.01) t = now + 0.12; // pequeño colchón contra el jitter
+            node.start(t);
+            voicePlayhead[key] = t + buffer.duration;
+        }
+
+        function setSpeaking(userId, on) {
+            if (!userId) return;
+            if (on) speakingUsers.add(userId); else speakingUsers.delete(userId);
+            document.querySelectorAll(`.voice-user[data-uid="${userId}"]`).forEach(el => el.classList.toggle('speaking', on));
+        }
+        function markSpeakingBrief(userId) {
+            setSpeaking(userId, true);
+            clearTimeout(speakingTimers[userId]);
+            speakingTimers[userId] = setTimeout(() => setSpeaking(userId, false), 450);
+        }
+
+        // ----- Controles -----
+        function setVoiceVolume(v) {
+            voiceVolume = v / 100;
+            if (voiceGain) voiceGain.gain.value = voiceVolume;
+        }
+
+        function toggleDeafen() {
+            voice.deafened = !voice.deafened;
+            if (voice.deafened) Object.keys(voicePlayhead).forEach(k => delete voicePlayhead[k]);
+            renderVoicePanel();
+        }
+
+        // ----- Hablar (micrófono -> WebSocket -> servidor) -----
+        // El audio viaja por el mismo WebSocket que usamos para escuchar:
+        // llega en orden y sin esperar respuestas HTTP, y el servidor lo
+        // reproduce desde una cola continua (sin cortes).
+        async function toggleMic() {
+            if (!voice.connected) return;
+            if (mic.on) { stopMic(); renderVoicePanel(); return; }
+            try {
+                mic.stream = await navigator.mediaDevices.getUserMedia({
+                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 }
+                });
+            } catch (e) {
+                showToast('No se pudo acceder al micrófono: ' + e.message, 'error');
+                return;
+            }
+            const AC = window.AudioContext || window.webkitAudioContext;
+            mic.ctx = new AC();
+            mic.src = mic.ctx.createMediaStreamSource(mic.stream);
+            mic.proc = mic.ctx.createScriptProcessor(2048, 1, 1); // ~43 ms por bloque
+            const ratio = mic.ctx.sampleRate / 48000;
+            mic.hang = 0;
+            mic.proc.onaudioprocess = (e) => {
+                if (!mic.on) return;
+                const input = e.inputBuffer.getChannelData(0);
+                // Remuestreo lineal a 48 kHz si el navegador usa otra frecuencia
+                let out;
+                if (ratio === 1) out = new Float32Array(input);
+                else {
+                    const n = Math.floor(input.length / ratio);
+                    out = new Float32Array(n);
+                    for (let i = 0; i < n; i++) {
+                        const pos = i * ratio, i0 = Math.floor(pos), i1 = Math.min(i0 + 1, input.length - 1);
+                        out[i] = input[i0] + (input[i1] - input[i0]) * (pos - i0);
+                    }
+                }
+                // Puerta de ruido con "cola": sigue enviando ~0.4 s tras la última voz
+                let sum = 0, cnt = 0;
+                for (let i = 0; i < out.length; i += 4) { sum += out[i] * out[i]; cnt++; }
+                if (Math.sqrt(sum / cnt) > 0.006) mic.hang = 10;
+                else if (mic.hang > 0) mic.hang--;
+                else return;
+                sendMicChunk(out);
+            };
+            const mute = mic.ctx.createGain(); mute.gain.value = 0; // el procesador necesita salida, pero sin eco
+            mic.src.connect(mic.proc); mic.proc.connect(mute); mute.connect(mic.ctx.destination);
+            mic.on = true;
+            renderVoicePanel();
+        }
+
+        function sendMicChunk(f32) {
+            const sock = voice.ws;
+            if (!sock || sock.readyState !== 1 || sock.bufferedAmount > 262144) return;
+            // Mono float -> estéreo Int16 little-endian
+            const pcm = new Int16Array(f32.length * 2);
+            for (let i = 0; i < f32.length; i++) {
+                const s = Math.max(-1, Math.min(1, f32[i]));
+                const v = s < 0 ? s * 32768 : s * 32767;
+                pcm[i * 2] = v; pcm[i * 2 + 1] = v;
+            }
+            const u8 = new Uint8Array(pcm.buffer);
+            let bin = '';
+            for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+            sock.send(JSON.stringify({ event: 'speak', guildId: voice.guildId, audioBase64: btoa(bin) }));
+        }
+
+        function stopMic() {
+            mic.on = false;
+            try { if (mic.proc) { mic.proc.onaudioprocess = null; mic.proc.disconnect(); } } catch (e) {}
+            try { if (mic.src) mic.src.disconnect(); } catch (e) {}
+            try { if (mic.stream) mic.stream.getTracks().forEach(t => t.stop()); } catch (e) {}
+            try { if (mic.ctx) mic.ctx.close(); } catch (e) {}
+            mic.stream = mic.ctx = mic.proc = mic.src = null;
+        }
+
+        // ----- Panel e integración con el gateway -----
+        function renderVoicePanel() {
+            const p = document.getElementById('voice-panel');
+            p.classList.toggle('visible', voice.connected);
+            if (!voice.connected) return;
+            document.getElementById('vp-channel').innerText = voice.channelName;
+            const micBtn = document.getElementById('vp-mic');
+            micBtn.classList.toggle('on', mic.on); micBtn.classList.toggle('off', !mic.on);
+            micBtn.title = mic.on ? 'Micrófono activado (click para apagar)' : 'Micrófono apagado (click para hablar)';
+            const dBtn = document.getElementById('vp-deaf');
+            dBtn.classList.toggle('off', voice.deafened);
+            dBtn.title = voice.deafened ? 'Ensordecido (click para escuchar)' : 'Escuchando (click para ensordecer)';
+            // Transmisiones / cámaras dentro de la llamada actual
+            const live = document.getElementById('vp-live');
+            const states = (guildVoiceStates[voice.guildId] || []).filter(vs => vs.channel_id === voice.channelId && (vs.self_stream || vs.self_video));
+            live.innerHTML = states.map(vs => {
+                const n = vs.member?.nick || vs.member?.user?.username || vs.user_id;
+                return `<div class="vp-live-item">${vs.self_stream ? '<span class="vbadge live" style="margin:0;" onclick="showStreamInfo()">EN VIVO</span>' : '&#128247;'} ${escapeHTML(n)}</div>`;
+            }).join('');
+        }
+
+        function onVoiceStateUpdate(data) {
+            if (!voice.connected) return;
+            // Si echan al bot de la llamada o la cierran desde fuera
+            if (botData && data.user_id === botData.id && data.guild_id === voice.guildId) {
+                if (!data.channel_id) { leaveVoice(true).then(() => showToast('El bot salió de la llamada.', 'info')); return; }
+                if (data.channel_id !== voice.channelId) {
+                    voice.channelId = data.channel_id;
+                    const ch = currentGuildChannels.find(c => c.id === data.channel_id);
+                    if (ch) voice.channelName = ch.name;
+                }
+            }
+            if (data.guild_id === voice.guildId) renderVoicePanel();
+        }
     </script>
 </body>
 </html>
